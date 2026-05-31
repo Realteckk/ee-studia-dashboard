@@ -1282,10 +1282,17 @@ function renderEETasks() {
   const eeProj = DB.projects.filter(isEkemini);
   const eeProjIds = new Set(eeProj.map(p => p.id));
 
-  // Tasks linked to EE projects
+  // Tasks linked to EE projects OR assigned to Ekemini
+  const ekeminiCrewId = 'recbaWk4p9hO1aw1S';
   const eeTasks = DB.tasks.filter(t => {
-    const linked = f(t.fields, 'Project', []);
-    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
+    const projLinked = f(t.fields, 'Project', []);
+    const assignedTo = f(t.fields, 'Assigned To', []);
+    const linkedToEEProj = projLinked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
+    const assignedToEkemini = assignedTo.some(l => {
+      const id = typeof l === 'string' ? l : (l && l.id);
+      return id === ekeminiCrewId;
+    });
+    return linkedToEEProj || assignedToEkemini;
   });
 
   const urgent = eeTasks.filter(t => f(t.fields,'Priority','') === 'Urgent');
@@ -1314,7 +1321,9 @@ function renderEETasks() {
     const pri = f(t.fields, 'Priority', 'Medium');
     const due = f(t.fields, 'Due Date', '');
     const proj = f(t.fields, 'Project', []);
-    const projName = proj.length ? proj[0].name.split('—')[0].trim() : '';
+    const projId = proj.length ? (typeof proj[0] === 'string' ? proj[0] : (proj[0] && proj[0].id)) : null;
+    const projRecord = projId ? DB.projects.find(p => p.id === projId) : null;
+    const projName = projRecord ? (projRecord.fields['Project Name'] || '').split('—')[0].trim() : '';
     const dotColor = dotMap[pri] || '#888';
 
     let pillHtml = `<span class="p-medium">${pri}</span>`;

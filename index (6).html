@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EE Studia — Project Insights</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --red: #C8201E;
+    --red-light: #f9e8e8;
+    --red-mid: #e8a0a0;
+    --bg: #F5F3EF;
+    --surface: #FFFFFF;
+    --surface-2: #F0EDE8;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --text: #1A1814;
+    --text-2: #6B6760;
+    --text-3: #9E9B97;
+    --green: #2D7A4F;
+    --green-light: #E6F4EC;
+    --amber: #B8610A;
+    --amber-light: #FEF3E7;
+    --blue: #1A5FA8;
+    --blue-light: #E8F1FB;
+    --sidebar-w: 230px;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  h1,h2,h3,h4 { font-family: 'Syne', sans-serif; }
+
+  /* ─── LAYOUT ─── */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .profile-block {
+    padding: 22px 18px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .profile-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 10px;
+  }
+
+  .logo-ring {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(200,32,30,0.35);
+  }
+
+  .logo-ring img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+    filter: brightness(0) invert(1);
+  }
+
+  .logo-ring .fallback {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .profile-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .profile-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  .profile-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    color: var(--red);
+    background: var(--red-light);
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  .profile-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+
+  .nav-section { padding: 10px 0 4px; }
+
+  .nav-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 6px 18px 4px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 18px;
+    cursor: pointer;
+    color: var(--text-2);
+    font-size: 12.5px;
+    font-weight: 400;
+    border-left: 2px solid transparent;
+    transition: all 0.14s ease;
+    position: relative;
+    user-select: none;
+  }
+
+  .nav-item:hover {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: var(--red-light);
+    color: var(--red);
+    border-left: 2px solid var(--red);
+    font-weight: 500;
+  }
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+
+  .badge-red { background: #fde8e8; color: var(--red); }
+  .badge-gray { background: var(--surface-2); color: var(--text-3); }
+
+  .nav-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-3);
+    line-height: 1.6;
+  }
+
+  /* ─── MAIN ─── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 28px 40px;
+    background: var(--bg);
+    scrollbar-width: thin;
+  }
+
+  /* ─── LOADING / ERROR ─── */
+  .loading-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    gap: 16px;
+  }
+
+  .loading-logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(200,32,30,0.3); }
+    50% { transform: scale(1.04); box-shadow: 0 0 0 12px rgba(200,32,30,0); }
+  }
+
+  .loading-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── PAGE HEADER ─── */
+  .page-header {
+    margin-bottom: 22px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 21px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .page-sub {
+    font-size: 12.5px;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+
+  /* ─── METRIC CARDS ─── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .metrics-grid.cols3 { grid-template-columns: repeat(3, 1fr); }
+  .metrics-grid.cols2 { grid-template-columns: repeat(2, 1fr); }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 5px;
+  }
+
+  .metric-red { color: var(--red); }
+  .metric-green { color: var(--green); }
+  .metric-amber { color: var(--amber); }
+
+  /* ─── CHART CARDS ─── */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 22px;
+    animation: fadeUp 0.35s ease;
+  }
+
+  .chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .chart-sub {
+    font-size: 11.5px;
+    color: var(--text-3);
+    margin-bottom: 16px;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .mt16 { margin-top: 16px; }
+  .mt20 { margin-top: 20px; }
+
+  /* ─── LEGEND ─── */
+  .legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin-bottom: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text-2);
+  }
+
+  .legend-sq {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ─── PROJECT LIST ─── */
+  .project-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .project-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s;
+  }
+
+  .project-row:hover { border-color: var(--border-strong); }
+
+  .project-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .project-info { flex: 1; min-width: 0; }
+
+  .project-name {
+    font-weight: 500;
+    font-size: 12.5px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .project-loc {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+
+  .project-right { text-align: right; flex-shrink: 0; }
+  .project-val { font-weight: 600; font-size: 12.5px; font-family: 'Syne', sans-serif; }
+  .project-pct { font-size: 10.5px; color: var(--text-3); }
+
+  .prog-bar {
+    width: 56px;
+    height: 4px;
+    background: var(--surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .prog-fill { height: 100%; background: var(--red); border-radius: 2px; }
+
+  /* ─── PILLS ─── */
+  .pill {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pill-construction { background: #fde8e8; color: #9B2020; }
+  .pill-design { background: #e6f4ec; color: #1B6637; }
+  .pill-working { background: #fef3e7; color: #8C4A08; }
+  .pill-briefing { background: #e8f1fb; color: #1348A0; }
+  .pill-approval { background: #fdf0f8; color: #8B2060; }
+  .pill-snagging { background: #f0ebff; color: #5B35A8; }
+  .pill-completed { background: #e6f4ec; color: #1B6637; }
+
+  /* ─── PAYMENT ROWS ─── */
+  .pay-list { display: flex; flex-direction: column; }
+
+  .pay-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pay-row:last-child { border-bottom: none; }
+  .pay-name { flex: 1; font-size: 12px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pay-amount { font-size: 12px; font-weight: 500; white-space: nowrap; }
+
+  .pay-pill {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .pay-paid { background: #e6f4ec; color: #1B6637; }
+  .pay-overdue { background: #fde8e8; color: #9B2020; }
+  .pay-partial { background: #fef3e7; color: #8C4A08; }
+  .pay-pending { background: var(--surface-2); color: var(--text-3); }
+
+  /* ─── CLIENT ROWS ─── */
+  .client-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .client-row:last-child { border-bottom: none; }
+
+  .client-av {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--amber-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--amber);
+    flex-shrink: 0;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .client-info { flex: 1; min-width: 0; }
+  .client-name { font-size: 12.5px; font-weight: 500; }
+  .client-type { font-size: 11px; color: var(--text-3); }
+  .source-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
+
+  /* ─── TASK ROWS ─── */
+  .task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .task-row:last-child { border-bottom: none; }
+  .task-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .task-info { flex: 1; min-width: 0; }
+  .task-name { font-size: 12px; color: var(--text); line-height: 1.4; }
+  .task-meta { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+  .p-urgent { background: #fde8e8; color: #9B2020; font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 20px; white-space: nowrap; }
+  .p-high { background: #fef3e7; color: #8C4A08; font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 20px; white-space: nowrap; }
+  .p-medium { background: #e8f1fb; color: #1348A0; font-size: 10px; font-weight: 500; padding: 1px 7px; border-radius: 20px; white-space: nowrap; }
+
+  /* ─── INSP ROWS ─── */
+  .insp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .insp-row:last-child { border-bottom: none; }
+  .insp-name { flex: 1; font-size: 12px; color: var(--text); }
+  .insp-meta { font-size: 11px; color: var(--text-3); }
+
+  .defect-yes { background: #fde8e8; color: #9B2020; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .defect-no { background: #e6f4ec; color: #1B6637; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+
+  /* ─── VENDOR ROWS ─── */
+  .vendor-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .vendor-row:last-child { border-bottom: none; }
+  .vendor-av { width: 30px; height: 30px; border-radius: var(--radius); background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: var(--blue); flex-shrink: 0; }
+  .vendor-info { flex: 1; min-width: 0; }
+  .vendor-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vendor-trade { font-size: 11px; color: var(--text-3); }
+  .stars { font-size: 11px; color: #E8A000; letter-spacing: -1px; }
+
+  /* ─── VIEWS ─── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── STAT BANNER ─── */
+  .stat-banner {
+    background: var(--text);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-bottom: 18px;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .stat-banner-item {
+    padding: 0 20px;
+    border-right: 1px solid rgba(255,255,255,0.12);
+  }
+
+  .stat-banner-item:first-child { padding-left: 0; }
+  .stat-banner-item:last-child { border-right: none; }
+
+  .sb-label { font-size: 10.5px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .sb-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; color: #fff; }
+  .sb-sub { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+  .sb-red { color: #ff9090; }
+  .sb-green { color: #7ee8a2; }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .stat-banner { grid-template-columns: repeat(2, 1fr); }
+    .stat-banner-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.12); padding: 10px 0; }
+  }
+
+  @media (max-width: 680px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">EE</div>
+  <div class="loading-text">Loading studio data…</div>
+</div>
+
+<div class="app" id="appShell" style="display:none">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="profile-block">
+      <div class="profile-row">
+        <div class="logo-ring">
+          <span class="fallback">EE</span>
+        </div>
+        <div>
+          <div class="profile-name">Ekemini Evans</div>
+          <div class="profile-sub">Principal Architect</div>
+        </div>
+      </div>
+      <div class="profile-badge">EE Studia</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">EE Studia</div>
+      <div class="nav-item active" data-view="ee-overview">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" data-view="ee-financial">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financials
+        <span class="nav-badge badge-red" id="badge-overdue">—</span>
+      </div>
+      <div class="nav-item" data-view="ee-projects">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Projects
+        <span class="nav-badge badge-gray" id="badge-ee-projects">6</span>
+      </div>
+      <div class="nav-item" data-view="ee-tasks">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tasks
+        <span class="nav-badge badge-red" id="badge-urgent-tasks">—</span>
+      </div>
+      <div class="nav-item" data-view="ee-clients">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Clients
+        <span class="nav-badge badge-gray" id="badge-ee-clients">6</span>
+      </div>
+      <div class="nav-item" data-view="ee-deliverables">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Deliverables
+        <span class="nav-badge badge-gray" id="badge-ee-deliv">—</span>
+      </div>
+      <div class="nav-item" data-view="ee-inspections">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        Site Inspections
+        <span class="nav-badge badge-gray" id="badge-ee-insp">—</span>
+      </div>
+      <div class="nav-item" data-view="ee-vendors">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+        Vendors
+        <span class="nav-badge badge-gray" id="badge-ee-vendors">10</span>
+      </div>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <div class="nav-section">
+      <div class="nav-label">Idlewoods</div>
+      <div class="nav-item" data-view="iw-overview">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" data-view="iw-projects">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Projects
+        <span class="nav-badge badge-gray">7</span>
+      </div>
+      <div class="nav-item" data-view="iw-financial">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Financials
+      </div>
+      <div class="nav-item" data-view="iw-sites">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Site Activity
+        <span class="nav-badge badge-gray">4</span>
+      </div>
+      <div class="nav-item" data-view="iw-vendors">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        Vendors
+        <span class="nav-badge badge-gray">6</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div style="margin-bottom:4px;font-weight:500;color:var(--text-2)">EE Studia Dashboard</div>
+      Live data · Airtable sync<br/>
+      <span id="last-updated">Updating…</span>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="mainContent">
+
+    <!-- EE OVERVIEW -->
+    <div class="view active" id="view-ee-overview">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Overview</div>
+        <div class="page-sub" id="ee-overview-sub">Loading…</div>
+      </div>
+      <div class="stat-banner" id="ee-stat-banner">
+        <div class="stat-banner-item"><div class="sb-label">Contract Value</div><div class="sb-val" id="sb-cv">—</div><div class="sb-sub">total pipeline</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Received</div><div class="sb-val sb-green" id="sb-recv">—</div><div class="sb-sub">collected to date</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Outstanding</div><div class="sb-val sb-red" id="sb-out">—</div><div class="sb-sub">still to collect</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Active Projects</div><div class="sb-val" id="sb-proj">—</div><div class="sb-sub">personal commissions</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">Projects by stage</div>
+          <div class="chart-sub">EE Studia commissions</div>
+          <div class="legend-row" id="ee-stage-legend"></div>
+          <div style="position:relative;height:190px"><canvas id="eeStageChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Projects by type</div>
+          <div class="chart-sub">Commission mix</div>
+          <div class="legend-row" id="ee-type-legend"></div>
+          <div style="position:relative;height:190px"><canvas id="eeTypeChart"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Contract value by project</div>
+        <div class="chart-sub">₦ millions · personal studio</div>
+        <div style="position:relative;height:200px"><canvas id="eeValueChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- EE FINANCIALS -->
+    <div class="view" id="view-ee-financial">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Financials</div>
+        <div class="page-sub">Invoice tracking · payments · outstanding balances</div>
+      </div>
+      <div class="metrics-grid" id="ee-fin-metrics"></div>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">Revenue locked by project stage</div>
+          <div class="chart-sub">Contract value at each stage (₦M)</div>
+          <div style="position:relative;height:200px"><canvas id="eeStageRevenueChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Payment records</div>
+          <div class="chart-sub">All EE Studia invoices</div>
+          <div class="pay-list" id="ee-pay-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EE PROJECTS -->
+    <div class="view" id="view-ee-projects">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Projects</div>
+        <div class="page-sub">6 active personal commissions</div>
+      </div>
+      <div class="project-list" id="ee-project-list"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Completion progress</div>
+        <div class="chart-sub">% complete per project</div>
+        <div style="position:relative;height:200px"><canvas id="eeProgressChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- EE TASKS -->
+    <div class="view" id="view-ee-tasks">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Tasks</div>
+        <div class="page-sub">All tasks assigned to Ekemini Evans</div>
+      </div>
+      <div class="metrics-grid cols3" id="ee-task-metrics"></div>
+      <div class="grid-2 mt16">
+        <div class="chart-card">
+          <div class="chart-title">All tasks</div>
+          <div class="chart-sub">Sorted by priority</div>
+          <div id="ee-task-list"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Tasks by category</div>
+          <div class="legend-row" id="ee-task-cat-legend"></div>
+          <div style="position:relative;height:220px"><canvas id="eeTaskCatChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EE CLIENTS -->
+    <div class="view" id="view-ee-clients">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Clients</div>
+        <div class="page-sub">Personal studio client relationships</div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">Acquisition source</div>
+          <div class="legend-row" id="ee-lead-legend"></div>
+          <div style="position:relative;height:180px"><canvas id="eeLeadChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Client types</div>
+          <div class="legend-row" id="ee-ctype-legend"></div>
+          <div style="position:relative;height:180px"><canvas id="eeCtypeChart"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Client directory</div>
+        <div class="chart-sub" style="margin-bottom:12px">All EE Studia clients</div>
+        <div id="ee-client-list"></div>
+      </div>
+    </div>
+
+    <!-- EE DELIVERABLES -->
+    <div class="view" id="view-ee-deliverables">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Deliverables</div>
+        <div class="page-sub">Design outputs across all personal projects</div>
+      </div>
+      <div class="metrics-grid" id="ee-deliv-metrics"></div>
+      <div class="grid-2 mt16">
+        <div class="chart-card">
+          <div class="chart-title">By type</div>
+          <div class="legend-row" id="ee-deliv-type-legend"></div>
+          <div style="position:relative;height:200px"><canvas id="eeDelivTypeChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">By status</div>
+          <div class="legend-row" id="ee-deliv-status-legend"></div>
+          <div style="position:relative;height:200px"><canvas id="eeDelivStatusChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EE INSPECTIONS -->
+    <div class="view" id="view-ee-inspections">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Site Inspections</div>
+        <div class="page-sub">Field visits on Ekemini's personal projects</div>
+      </div>
+      <div class="metrics-grid cols3" id="ee-insp-metrics"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Inspection log</div>
+        <div class="chart-sub" style="margin-bottom:12px">All site visits</div>
+        <div id="ee-insp-list"></div>
+      </div>
+    </div>
+
+    <!-- EE VENDORS -->
+    <div class="view" id="view-ee-vendors">
+      <div class="page-header">
+        <div class="page-title">EE Studia — Vendors & Contractors</div>
+        <div class="page-sub">10 vendors linked to Ekemini's personal projects</div>
+      </div>
+      <div class="metrics-grid cols3" id="ee-vendor-metrics"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Vendor directory</div>
+        <div class="chart-sub" style="margin-bottom:12px">All EE Studia vendors</div>
+        <div id="ee-vendor-list"></div>
+      </div>
+    </div>
+
+    <!-- IW OVERVIEW -->
+    <div class="view" id="view-iw-overview">
+      <div class="page-header">
+        <div class="page-title">Idlewoods — Overview</div>
+        <div class="page-sub">Architecture firm · Ekemini's primary employer</div>
+      </div>
+      <div class="stat-banner">
+        <div class="stat-banner-item"><div class="sb-label">Contract Value</div><div class="sb-val" id="iw-sb-cv">—</div><div class="sb-sub">total pipeline</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Received</div><div class="sb-val sb-green" id="iw-sb-recv">—</div><div class="sb-sub">collected</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Projects</div><div class="sb-val" id="iw-sb-proj">7</div><div class="sb-sub">active commissions</div></div>
+        <div class="stat-banner-item"><div class="sb-label">Avg Completion</div><div class="sb-val" id="iw-sb-avg">—</div><div class="sb-sub">across all projects</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-card">
+          <div class="chart-title">Projects by stage</div>
+          <div class="legend-row" id="iw-stage-legend"></div>
+          <div style="position:relative;height:190px"><canvas id="iwStageChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Contract value by project</div>
+          <div class="chart-sub">₦ millions</div>
+          <div style="position:relative;height:190px"><canvas id="iwValueChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IW PROJECTS -->
+    <div class="view" id="view-iw-projects">
+      <div class="page-header">
+        <div class="page-title">Idlewoods — Projects</div>
+        <div class="page-sub">7 commissions across all stages</div>
+      </div>
+      <div class="project-list" id="iw-project-list"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Completion progress</div>
+        <div class="chart-sub">% complete per project</div>
+        <div style="position:relative;height:220px"><canvas id="iwProgressChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- IW FINANCIAL -->
+    <div class="view" id="view-iw-financial">
+      <div class="page-header">
+        <div class="page-title">Idlewoods — Financials</div>
+        <div class="page-sub">Invoice and payment data across all firm projects</div>
+      </div>
+      <div class="metrics-grid" id="iw-fin-metrics"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Invoiced vs received per project</div>
+        <div class="chart-sub">₦ millions</div>
+        <div class="legend-row">
+          <span class="legend-item"><span class="legend-sq" style="background:#C8201E"></span>Invoiced</span>
+          <span class="legend-item"><span class="legend-sq" style="background:#2D7A4F"></span>Received</span>
+        </div>
+        <div style="position:relative;height:240px"><canvas id="iwFinChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- IW SITE ACTIVITY -->
+    <div class="view" id="view-iw-sites">
+      <div class="page-header">
+        <div class="page-title">Idlewoods — Site Activity</div>
+        <div class="page-sub">Inspection records on firm projects</div>
+      </div>
+      <div class="metrics-grid cols3" id="iw-insp-metrics"></div>
+      <div class="chart-card mt16">
+        <div class="chart-title">Inspection log</div>
+        <div class="chart-sub" style="margin-bottom:12px">All recorded site visits</div>
+        <div id="iw-insp-list"></div>
+      </div>
+    </div>
+
+    <!-- IW VENDORS -->
+    <div class="view" id="view-iw-vendors">
+      <div class="page-header">
+        <div class="page-title">Idlewoods — Vendors</div>
+        <div class="page-sub">6 vendors & contractors linked to Idlewoods projects</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Vendor directory</div>
+        <div class="chart-sub" style="margin-bottom:12px">All Idlewoods vendors</div>
+        <div id="iw-vendor-list"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const TABLES = {
+  projects: 'tblifQj3Q1ECJKw8c',
+  clients: 'tblvTQswZssCtsqUQ',
+  payments: 'tbl67lSojQhdwrMh9',
+  deliverables: 'tbljk8OyeglGvbnNO',
+  inspections: 'tbl7Qpo4SGs8y6Evu',
+  vendors: 'tblZDfstZ1TVXe4Hv',
+  tasks: 'tbl6zfvbdkQ5YNTuO',
+  crew: 'tblNmwfobTvraqLMh'
+};
+
+let DB = {};
+let chartInstances = {};
+
+async function fetchTable(tableId) {
+  let records = [], offset = null;
+  do {
+    let url = `/.netlify/functions/airtable?table=${tableId}`;
+    if (offset) url += `&offset=${encodeURIComponent(offset)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    records = records.concat(data.records || []);
+    offset = data.offset || null;
+  } while (offset);
+  return records;
+}
+
+async function loadAllData() {
+  const [projects, clients, payments, deliverables, inspections, vendors, tasks, crew] = await Promise.all([
+    fetchTable(TABLES.projects),
+    fetchTable(TABLES.clients),
+    fetchTable(TABLES.payments),
+    fetchTable(TABLES.deliverables),
+    fetchTable(TABLES.inspections),
+    fetchTable(TABLES.vendors),
+    fetchTable(TABLES.tasks),
+    fetchTable(TABLES.crew)
+  ]);
+  DB = { projects, clients, payments, deliverables, inspections, vendors, tasks, crew };
+}
+
+function f(fields, key, fallback = '') {
+  return fields[key] !== undefined && fields[key] !== null ? fields[key] : fallback;
+}
+
+function naira(n) {
+  if (!n && n !== 0) return '₦0';
+  if (n >= 1e9) return '₦' + (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return '₦' + (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '₦' + (n / 1e3).toFixed(0) + 'K';
+  return '₦' + Math.round(n).toLocaleString();
+}
+
+function initials(name) {
+  if (!name) return '??';
+  return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function pillClass(status) {
+  const s = (status || '').toLowerCase();
+  if (s.includes('construction')) return 'pill-construction';
+  if (s.includes('design development')) return 'pill-design';
+  if (s.includes('working')) return 'pill-working';
+  if (s.includes('briefing')) return 'pill-briefing';
+  if (s.includes('approval') || s.includes('permit')) return 'pill-approval';
+  if (s.includes('snagging')) return 'pill-snagging';
+  if (s.includes('completed')) return 'pill-completed';
+  return 'pill-briefing';
+}
+
+function mkChart(id, type, labels, datasets, opts = {}) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); }
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  chartInstances[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      ...opts
+    }
+  });
+}
+
+const PALETTE = ['#C8201E','#1A5FA8','#1D9E75','#B8610A','#7B3FA8','#D4537E','#888780','#2E8B6A','#E87C20','#3A6DBF'];
+
+// ─── IDENTIFY EKEMINI vs IDLEWOODS ───
+function isEkemini(proj) {
+  const linked = f(proj.fields, 'Project For :', []);
+  return linked.some(l => l.name === 'Ekemini Evans');
+}
+
+function isIdlewoods(proj) {
+  const linked = f(proj.fields, 'Project For :', []);
+  return linked.some(l => l.name === 'Idlewoods');
+}
+
+// ─── RENDER EE OVERVIEW ───
+function renderEEOverview() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+
+  // Payments linked to EE projects
+  const eePay = DB.payments.filter(p => {
+    const linked = f(p.fields, 'Project', []);
+    return linked.some(l => eeProjIds.has(l.id));
+  });
+
+  const totalCV = eeProj.reduce((s, p) => s + (f(p.fields, 'Contract Value (₦)', 0)), 0);
+  const totalRecv = eePay.reduce((s, p) => s + (f(p.fields, 'Amount Paid (₦)', 0)), 0);
+  const totalOut = totalCV - totalRecv;
+
+  document.getElementById('sb-cv').textContent = naira(totalCV);
+  document.getElementById('sb-recv').textContent = naira(totalRecv);
+  document.getElementById('sb-out').textContent = naira(totalOut);
+  document.getElementById('sb-proj').textContent = eeProj.length;
+  document.getElementById('ee-overview-sub').textContent = `Ekemini Evans · Personal studio · ${eeProj.length} active projects`;
+
+  // Stage doughnut
+  const stageCounts = {};
+  eeProj.forEach(p => {
+    const s = f(p.fields, 'Status', {name: 'Unknown'}).name;
+    stageCounts[s] = (stageCounts[s] || 0) + 1;
+  });
+  const stageLabels = Object.keys(stageCounts);
+  const stageData = stageLabels.map(k => stageCounts[k]);
+  const stageColors = stageLabels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  const stageLegend = document.getElementById('ee-stage-legend');
+  stageLegend.innerHTML = stageLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${stageColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeStageChart', 'doughnut', stageLabels,
+    [{ data: stageData, backgroundColor: stageColors, borderWidth: 0 }],
+    { cutout: '62%' }
+  );
+
+  // Type doughnut
+  const typeCounts = {};
+  eeProj.forEach(p => {
+    const t = f(p.fields, 'Project Type', {name: 'Other'}).name;
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  const typeLabels = Object.keys(typeCounts);
+  const typeData = typeLabels.map(k => typeCounts[k]);
+  const typeColors = typeLabels.map((_, i) => PALETTE[(i + 2) % PALETTE.length]);
+
+  document.getElementById('ee-type-legend').innerHTML = typeLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${typeColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeTypeChart', 'doughnut', typeLabels,
+    [{ data: typeData, backgroundColor: typeColors, borderWidth: 0 }],
+    { cutout: '62%' }
+  );
+
+  // Value bar
+  const sorted = [...eeProj].sort((a, b) => f(b.fields, 'Contract Value (₦)', 0) - f(a.fields, 'Contract Value (₦)', 0));
+  const valLabels = sorted.map(p => {
+    const name = f(p.fields, 'Project Name', '');
+    return name.length > 22 ? name.substring(0, 22) + '…' : name;
+  });
+  const valData = sorted.map(p => +(f(p.fields, 'Contract Value (₦)', 0) / 1e6).toFixed(1));
+
+  mkChart('eeValueChart', 'bar', valLabels,
+    [{ data: valData, backgroundColor: '#C8201E', borderRadius: 5, borderSkipped: false }],
+    { scales: { y: { ticks: { callback: v => '₦' + v + 'M', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }, x: { ticks: { font: { size: 10 }, maxRotation: 30 }, grid: { display: false } } } }
+  );
+}
+
+// ─── RENDER EE FINANCIALS ───
+function renderEEFinancials() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+  const eePay = DB.payments.filter(p => {
+    const linked = f(p.fields, 'Project', []);
+    return linked.some(l => eeProjIds.has(l.id));
+  });
+
+  const totalInv = eePay.reduce((s, p) => s + f(p.fields, 'Invoice Amount (₦)', 0), 0);
+  const totalRecv = eePay.reduce((s, p) => s + f(p.fields, 'Amount Paid (₦)', 0), 0);
+  const overduePay = eePay.filter(p => f(p.fields, 'Status', {name:''}).name === 'Overdue');
+  const pendingPay = eePay.filter(p => f(p.fields, 'Status', {name:''}).name === 'Pending');
+
+  document.getElementById('ee-fin-metrics').innerHTML = [
+    { label: 'Total Invoiced', val: naira(totalInv), sub: 'all stages', cls: '' },
+    { label: 'Total Collected', val: naira(totalRecv), sub: Math.round(totalRecv/totalInv*100) + '% collection rate', cls: 'metric-green' },
+    { label: 'Overdue', val: naira(overduePay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0)), sub: overduePay.length + ' record(s)', cls: 'metric-red' },
+    { label: 'Pending', val: naira(pendingPay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0)), sub: pendingPay.length + ' awaiting approval', cls: 'metric-amber' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div><div class="metric-sub">${m.sub}</div></div>`).join('');
+
+  // Revenue locked by stage
+  const stageRevenue = {};
+  eeProj.forEach(p => {
+    const s = f(p.fields, 'Status', {name:'Unknown'}).name;
+    const cv = f(p.fields, 'Contract Value (₦)', 0);
+    stageRevenue[s] = (stageRevenue[s] || 0) + cv;
+  });
+  const srLabels = Object.keys(stageRevenue);
+  const srData = srLabels.map(k => +(stageRevenue[k] / 1e6).toFixed(1));
+  const srColors = srLabels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  mkChart('eeStageRevenueChart', 'bar', srLabels,
+    [{ data: srData, backgroundColor: srColors, borderRadius: 5, borderSkipped: false }],
+    { scales: { y: { ticks: { callback: v => '₦' + v + 'M', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }, x: { ticks: { font: { size: 10 }, maxRotation: 30 }, grid: { display: false } } } }
+  );
+
+  // Payment list
+  const projMap = {};
+  eeProj.forEach(p => { projMap[p.id] = f(p.fields, 'Project Name', 'Project'); });
+
+  const payListEl = document.getElementById('ee-pay-list');
+  payListEl.innerHTML = eePay.map(p => {
+    const inv = f(p.fields, 'Invoice Amount (₦)', 0);
+    const paid = f(p.fields, 'Amount Paid (₦)', 0);
+    const statusObj = f(p.fields, 'Status', {name: 'Pending'});
+    const status = statusObj.name || 'Pending';
+    const projLinks = f(p.fields, 'Project', []);
+    const projName = projLinks.length ? (projMap[projLinks[0].id] || projLinks[0].name) : 'Unknown';
+    const short = projName.length > 28 ? projName.substring(0, 28) + '…' : projName;
+    const stage = f(p.fields, 'Payment Stage', {name: ''});
+    const stageStr = stage && stage.name ? stage.name : '';
+
+    let pillCls = 'pay-pending';
+    if (status === 'Overdue') pillCls = 'pay-overdue';
+    else if (status === 'Partially Paid') pillCls = 'pay-partial';
+    else if (status === 'Complete payment' || status === 'Paid') pillCls = 'pay-paid';
+
+    return `<div class="pay-row">
+      <span class="pay-name">${short}${stageStr ? ' — ' + stageStr : ''}</span>
+      <span class="pay-pill ${pillCls}">${status}</span>
+      <span class="pay-amount">${paid > 0 && paid < inv ? naira(paid) + ' / ' + naira(inv) : naira(inv)}</span>
+    </div>`;
+  }).join('');
+
+  // Overdue badge
+  document.getElementById('badge-overdue').textContent = overduePay.length || '0';
+}
+
+// ─── RENDER EE PROJECTS ───
+function renderEEProjects() {
+  const eeProj = DB.projects.filter(isEkemini).sort((a, b) => f(b.fields,'Contract Value (₦)',0) - f(a.fields,'Contract Value (₦)',0));
+  const dotColors = ['#C8201E','#1A5FA8','#1D9E75','#B8610A','#D4537E','#7B3FA8'];
+
+  document.getElementById('ee-project-list').innerHTML = eeProj.map((p, i) => {
+    const name = f(p.fields, 'Project Name', 'Unnamed');
+    const loc = f(p.fields, 'Location', '');
+    const type = f(p.fields, 'Project Type', {name:''}).name;
+    const status = f(p.fields, 'Status', {name:''}).name;
+    const cv = f(p.fields, 'Contract Value (₦)', 0);
+    const pct = Math.round(f(p.fields, 'Completion (%)', 0) * 100);
+    const color = dotColors[i % dotColors.length];
+    return `<div class="project-row">
+      <span class="project-dot" style="background:${color}"></span>
+      <div class="project-info">
+        <div class="project-name">${name}</div>
+        <div class="project-loc">${loc} · ${type}</div>
+      </div>
+      <span class="pill ${pillClass(status)}">${status}</span>
+      <div class="project-right">
+        <div class="project-val">${naira(cv)}</div>
+        <div class="project-pct">${pct}% done</div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // Progress chart
+  const chartLabels = eeProj.map(p => {
+    const n = f(p.fields, 'Project Name', '');
+    return n.split('—')[0].trim().substring(0, 18);
+  });
+  const chartData = eeProj.map(p => Math.round(f(p.fields, 'Completion (%)', 0) * 100));
+
+  mkChart('eeProgressChart', 'bar', chartLabels,
+    [{ data: chartData, backgroundColor: '#C8201E', borderRadius: 5, borderSkipped: false }],
+    { indexAxis: 'y', scales: { x: { max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.06)' } }, y: { ticks: { font: { size: 10 } }, grid: { display: false } } } }
+  );
+}
+
+// ─── RENDER EE TASKS ───
+function renderEETasks() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+
+  // Tasks linked to EE projects
+  const eeTasks = DB.tasks.filter(t => {
+    const linked = f(t.fields, 'Project', []);
+    return linked.some(l => eeProjIds.has(l.id));
+  });
+
+  const urgent = eeTasks.filter(t => f(t.fields,'Priority',{name:''}).name === 'Urgent');
+  const inProg = eeTasks.filter(t => f(t.fields,'Status',{name:''}).name === 'In Progress');
+  const toDo = eeTasks.filter(t => f(t.fields,'Status',{name:''}).name === 'To Do');
+
+  document.getElementById('badge-urgent-tasks').textContent = urgent.length || '0';
+
+  document.getElementById('ee-task-metrics').innerHTML = [
+    { label: 'Urgent', val: urgent.length, cls: 'metric-red' },
+    { label: 'In Progress', val: inProg.length, cls: '' },
+    { label: 'To Do', val: toDo.length, cls: '' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
+
+  const priorityOrder = { 'Urgent': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
+  const sorted = [...eeTasks].sort((a, b) => {
+    const pa = priorityOrder[f(a.fields,'Priority',{name:'Low'}).name] ?? 3;
+    const pb = priorityOrder[f(b.fields,'Priority',{name:'Low'}).name] ?? 3;
+    return pa - pb;
+  });
+
+  const dotMap = { 'Urgent': '#C8201E', 'High': '#B8610A', 'Medium': '#1A5FA8', 'Low': '#888780' };
+
+  document.getElementById('ee-task-list').innerHTML = sorted.map(t => {
+    const name = f(t.fields, 'Task Name', 'Unnamed task');
+    const pri = f(t.fields, 'Priority', {name:'Medium'}).name;
+    const due = f(t.fields, 'Due Date', '');
+    const proj = f(t.fields, 'Project', []);
+    const projName = proj.length ? proj[0].name.split('—')[0].trim() : '';
+    const dotColor = dotMap[pri] || '#888';
+
+    let pillHtml = `<span class="p-medium">${pri}</span>`;
+    if (pri === 'Urgent') pillHtml = `<span class="p-urgent">Urgent</span>`;
+    else if (pri === 'High') pillHtml = `<span class="p-high">High</span>`;
+
+    return `<div class="task-row">
+      <div class="task-dot" style="background:${dotColor}"></div>
+      <div class="task-info">
+        <div class="task-name">${name}</div>
+        <div class="task-meta">${projName}${due ? ' · Due ' + due : ''}</div>
+      </div>
+      ${pillHtml}
+    </div>`;
+  }).join('');
+
+  // Category chart
+  const catCounts = {};
+  eeTasks.forEach(t => {
+    const c = f(t.fields, 'Category', {name:'Other'}).name;
+    catCounts[c] = (catCounts[c] || 0) + 1;
+  });
+  const catLabels = Object.keys(catCounts);
+  const catData = catLabels.map(k => catCounts[k]);
+  const catColors = catLabels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  document.getElementById('ee-task-cat-legend').innerHTML = catLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${catColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeTaskCatChart', 'doughnut', catLabels,
+    [{ data: catData, backgroundColor: catColors, borderWidth: 0 }],
+    { cutout: '60%' }
+  );
+}
+
+// ─── RENDER EE CLIENTS ───
+function renderEEClients() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+
+  const eeClients = DB.clients.filter(c => {
+    const linked = f(c.fields, 'Projects', []);
+    return linked.some(l => eeProjIds.has(l.id));
+  });
+
+  // Lead source chart
+  const leadCounts = {};
+  eeClients.forEach(c => {
+    const s = f(c.fields, 'Lead Source', {name: 'Unknown'}).name;
+    leadCounts[s] = (leadCounts[s] || 0) + 1;
+  });
+  const leadLabels = Object.keys(leadCounts);
+  const leadData = leadLabels.map(k => leadCounts[k]);
+  const leadColors = leadLabels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  document.getElementById('ee-lead-legend').innerHTML = leadLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${leadColors[i]}"></span>${l} (${leadCounts[l]})</span>`
+  ).join('');
+
+  mkChart('eeLeadChart', 'doughnut', leadLabels,
+    [{ data: leadData, backgroundColor: leadColors, borderWidth: 0 }],
+    { cutout: '60%' }
+  );
+
+  // Client type chart
+  const typeCounts = {};
+  eeClients.forEach(c => {
+    const t = f(c.fields, 'Client Type', {name: 'Unknown'}).name;
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  const ctLabels = Object.keys(typeCounts);
+  const ctData = ctLabels.map(k => typeCounts[k]);
+  const ctColors = ctLabels.map((_, i) => PALETTE[(i + 3) % PALETTE.length]);
+
+  document.getElementById('ee-ctype-legend').innerHTML = ctLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${ctColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeCtypeChart', 'doughnut', ctLabels,
+    [{ data: ctData, backgroundColor: ctColors, borderWidth: 0 }],
+    { cutout: '60%' }
+  );
+
+  document.getElementById('ee-client-list').innerHTML = eeClients.map(c => {
+    const name = f(c.fields, 'Client Name', 'Unknown');
+    const type = f(c.fields, 'Client Type', {name:''}).name;
+    const source = f(c.fields, 'Lead Source', {name:''}).name;
+    const projLinks = f(c.fields, 'Projects', []);
+    const projName = projLinks.length ? projLinks[0].name.split('—')[0].trim() : '';
+    return `<div class="client-row">
+      <div class="client-av">${initials(name)}</div>
+      <div class="client-info">
+        <div class="client-name">${name}</div>
+        <div class="client-type">${projName} · ${type}</div>
+      </div>
+      <span class="source-pill">${source}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER EE DELIVERABLES ───
+function renderEEDeliverables() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+  const eeDeliv = DB.deliverables.filter(d => {
+    const linked = f(d.fields, 'Project', []);
+    return linked.some(l => eeProjIds.has(l.id));
+  });
+
+  document.getElementById('badge-ee-deliv').textContent = eeDeliv.length;
+
+  const statusCounts = { Approved: 0, 'In Progress': 0, 'Under Review': 0, 'Issued to Client': 0, 'Not Started': 0, 'Revision Required': 0 };
+  eeDeliv.forEach(d => {
+    const s = f(d.fields, 'Status', {name: 'Not Started'}).name;
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+
+  document.getElementById('ee-deliv-metrics').innerHTML = Object.entries(statusCounts).filter(([,v]) => v > 0).map(([k, v]) => {
+    let cls = '';
+    if (k === 'Approved' || k === 'Issued to Client') cls = 'metric-green';
+    if (k === 'Revision Required') cls = 'metric-red';
+    return `<div class="metric-card"><div class="metric-label">${k}</div><div class="metric-value ${cls}">${v}</div></div>`;
+  }).join('');
+
+  const typeCounts = {};
+  eeDeliv.forEach(d => {
+    const t = f(d.fields, 'Deliverable Type', {name:'Other'}).name;
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  const tLabels = Object.keys(typeCounts);
+  const tData = tLabels.map(k => typeCounts[k]);
+  const tColors = tLabels.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  document.getElementById('ee-deliv-type-legend').innerHTML = tLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${tColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeDelivTypeChart', 'doughnut', tLabels,
+    [{ data: tData, backgroundColor: tColors, borderWidth: 0 }],
+    { cutout: '60%' }
+  );
+
+  const sLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
+  const sData = sLabels.map(k => statusCounts[k]);
+  const sColors = ['#1D9E75','#1A5FA8','#B8610A','#2E8B6A','#888780','#C8201E'];
+
+  document.getElementById('ee-deliv-status-legend').innerHTML = sLabels.map((l, i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${sColors[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('eeDelivStatusChart', 'doughnut', sLabels,
+    [{ data: sData, backgroundColor: sColors.slice(0, sLabels.length), borderWidth: 0 }],
+    { cutout: '60%' }
+  );
+}
+
+// ─── RENDER EE INSPECTIONS ───
+function renderEEInspections() {
+  const eeProj = DB.projects.filter(isEkemini);
+  const eeProjIds = new Set(eeProj.map(p => p.id));
+  const eeInsp = DB.inspections.filter(i => {
+    const arch = f(i.fields, 'Architect', []);
+    const proj = f(i.fields, 'Project', []);
+    return proj.some(l => eeProjIds.has(l.id)) || arch.some(a => a.name === 'Ekemini Evans');
+  });
+
+  document.getElementById('badge-ee-insp').textContent = eeInsp.length;
+
+  const defects = eeInsp.filter(i => f(i.fields, 'Issues / Defects Found', false));
+
+  document.getElementById('ee-insp-metrics').innerHTML = [
+    { label: 'Total Inspections', val: eeInsp.length, cls: '' },
+    { label: 'Defects Flagged', val: defects.length, cls: defects.length > 0 ? 'metric-red' : 'metric-green' },
+    { label: 'Clean Visits', val: eeInsp.length - defects.length, cls: 'metric-green' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
+
+  document.getElementById('ee-insp-list').innerHTML = eeInsp.map(i => {
+    const ref = f(i.fields, 'Inspection Reference', 'Unnamed');
+    const date = f(i.fields, 'Visit Date', '');
+    const contractor = f(i.fields, 'Contractor on Site', '');
+    const defect = f(i.fields, 'Issues / Defects Found', false);
+    const stage = f(i.fields, 'Work Stage', {name:''}).name;
+    return `<div class="insp-row">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:500">${ref}</div>
+        <div style="font-size:11px;color:var(--text-3)">${contractor ? contractor + ' · ' : ''}${stage}</div>
+      </div>
+      <span class="insp-meta">${date}</span>
+      <span class="${defect ? 'defect-yes' : 'defect-no'}">${defect ? 'Defect' : 'Clear'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER EE VENDORS ───
+function renderEEVendors() {
+  const eeVendors = DB.vendors.filter(v => {
+    const linked = f(v.fields, 'Works With', []);
+    return linked.some(l => l.name === 'Ekemini Evans');
+  });
+
+  const active = eeVendors.filter(v => f(v.fields,'Status',{name:''}).name === 'Active').length;
+  const vetting = eeVendors.filter(v => f(v.fields,'Status',{name:''}).name === 'Vetting').length;
+
+  document.getElementById('ee-vendor-metrics').innerHTML = [
+    { label: 'Total Vendors', val: eeVendors.length, cls: '' },
+    { label: 'Active', val: active, cls: 'metric-green' },
+    { label: 'Under Vetting', val: vetting, cls: 'metric-amber' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
+
+  document.getElementById('ee-vendor-list').innerHTML = eeVendors.map(v => {
+    const name = f(v.fields, 'Vendor / Contractor Name', 'Unknown');
+    const trade = f(v.fields, 'Trade / Specialty', {name:''}).name;
+    const contact = f(v.fields, 'Contact Person', '');
+    const rating = f(v.fields, 'Rating', 0);
+    const status = f(v.fields, 'Status', {name:''}).name;
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    return `<div class="vendor-row">
+      <div class="vendor-av">${initials(name)}</div>
+      <div class="vendor-info">
+        <div class="vendor-name">${name}</div>
+        <div class="vendor-trade">${trade}${contact ? ' · ' + contact : ''}</div>
+      </div>
+      <span class="stars">${stars}</span>
+      <span class="pill ${status === 'Active' ? 'pill-design' : status === 'Vetting' ? 'pill-working' : 'pill-construction'}">${status}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER IW OVERVIEW ───
+function renderIWOverview() {
+  const iwProj = DB.projects.filter(isIdlewoods);
+  const iwProjIds = new Set(iwProj.map(p => p.id));
+  const iwPay = DB.payments.filter(p => {
+    const linked = f(p.fields, 'Project', []);
+    return linked.some(l => iwProjIds.has(l.id));
+  });
+
+  const totalCV = iwProj.reduce((s, p) => s + f(p.fields,'Contract Value (₦)',0), 0);
+  const totalRecv = iwPay.reduce((s, p) => s + f(p.fields,'Amount Paid (₦)',0), 0);
+  const avgPct = Math.round(iwProj.reduce((s, p) => s + f(p.fields,'Completion (%)',0), 0) / iwProj.length * 100);
+
+  document.getElementById('iw-sb-cv').textContent = naira(totalCV);
+  document.getElementById('iw-sb-recv').textContent = naira(totalRecv);
+  document.getElementById('iw-sb-avg').textContent = avgPct + '%';
+
+  const stageCounts = {};
+  iwProj.forEach(p => {
+    const s = f(p.fields,'Status',{name:'Unknown'}).name;
+    stageCounts[s] = (stageCounts[s] || 0) + 1;
+  });
+  const sL = Object.keys(stageCounts);
+  const sD = sL.map(k => stageCounts[k]);
+  const sC = sL.map((_,i) => PALETTE[i % PALETTE.length]);
+
+  document.getElementById('iw-stage-legend').innerHTML = sL.map((l,i) =>
+    `<span class="legend-item"><span class="legend-sq" style="background:${sC[i]}"></span>${l}</span>`
+  ).join('');
+
+  mkChart('iwStageChart', 'doughnut', sL,
+    [{ data: sD, backgroundColor: sC, borderWidth: 0 }],
+    { cutout: '62%' }
+  );
+
+  const sorted = [...iwProj].sort((a,b) => f(b.fields,'Contract Value (₦)',0) - f(a.fields,'Contract Value (₦)',0));
+  const vL = sorted.map(p => { const n = f(p.fields,'Project Name',''); return n.length > 18 ? n.substring(0,18)+'…' : n; });
+  const vD = sorted.map(p => +(f(p.fields,'Contract Value (₦)',0)/1e6).toFixed(1));
+
+  mkChart('iwValueChart', 'bar', vL,
+    [{ data: vD, backgroundColor: '#1A5FA8', borderRadius: 5, borderSkipped: false }],
+    { scales: { y: { ticks: { callback: v => '₦' + v + 'M', font:{size:11} }, grid:{color:'rgba(0,0,0,0.06)'} }, x: { ticks:{font:{size:10},maxRotation:30}, grid:{display:false} } } }
+  );
+}
+
+// ─── RENDER IW PROJECTS ───
+function renderIWProjects() {
+  const iwProj = DB.projects.filter(isIdlewoods).sort((a,b) => f(b.fields,'Contract Value (₦)',0) - f(a.fields,'Contract Value (₦)',0));
+  const dotColors = ['#C8201E','#1A5FA8','#1D9E75','#B8610A','#D4537E','#7B3FA8','#888780'];
+
+  document.getElementById('iw-project-list').innerHTML = iwProj.map((p, i) => {
+    const name = f(p.fields,'Project Name','Unnamed');
+    const loc = f(p.fields,'Location','');
+    const type = f(p.fields,'Project Type',{name:''}).name;
+    const status = f(p.fields,'Status',{name:''}).name;
+    const cv = f(p.fields,'Contract Value (₦)',0);
+    const pct = Math.round(f(p.fields,'Completion (%)',0)*100);
+    return `<div class="project-row">
+      <span class="project-dot" style="background:${dotColors[i]}"></span>
+      <div class="project-info"><div class="project-name">${name}</div><div class="project-loc">${loc} · ${type}</div></div>
+      <span class="pill ${pillClass(status)}">${status}</span>
+      <div class="project-right"><div class="project-val">${naira(cv)}</div><div class="project-pct">${pct}%</div></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:#1A5FA8"></div></div>
+    </div>`;
+  }).join('');
+
+  const cL = iwProj.map(p => { const n = f(p.fields,'Project Name',''); return n.split('—')[0].trim().substring(0,16); });
+  const cD = iwProj.map(p => Math.round(f(p.fields,'Completion (%)',0)*100));
+
+  mkChart('iwProgressChart', 'bar', cL,
+    [{ data: cD, backgroundColor: '#1A5FA8', borderRadius: 5, borderSkipped: false }],
+    { indexAxis: 'y', scales: { x: { max: 100, ticks:{callback:v=>v+'%',font:{size:11}}, grid:{color:'rgba(0,0,0,0.06)'} }, y:{ticks:{font:{size:10}},grid:{display:false}} } }
+  );
+}
+
+// ─── RENDER IW FINANCIAL ───
+function renderIWFinancial() {
+  const iwProj = DB.projects.filter(isIdlewoods);
+  const iwProjIds = new Set(iwProj.map(p => p.id));
+  const iwPay = DB.payments.filter(p => {
+    const linked = f(p.fields,'Project',[]);
+    return linked.some(l => iwProjIds.has(l.id));
+  });
+
+  const totalInv = iwPay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0);
+  const totalRecv = iwPay.reduce((s,p) => s + f(p.fields,'Amount Paid (₦)',0), 0);
+  const overdue = iwPay.filter(p => f(p.fields,'Status',{name:''}).name === 'Overdue');
+
+  document.getElementById('iw-fin-metrics').innerHTML = [
+    { label: 'Total Invoiced', val: naira(totalInv), cls: '' },
+    { label: 'Collected', val: naira(totalRecv), cls: 'metric-green' },
+    { label: 'Overdue', val: naira(overdue.reduce((s,p)=>s+f(p.fields,'Invoice Amount (₦)',0),0)), cls: 'metric-red' },
+    { label: 'Collection Rate', val: Math.round(totalRecv/totalInv*100)+'%', cls: '' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
+
+  // Build per-project data
+  const projPayMap = {};
+  iwProj.forEach(p => { projPayMap[p.id] = { inv: 0, recv: 0, name: f(p.fields,'Project Name','') }; });
+  iwPay.forEach(pay => {
+    const linked = f(pay.fields,'Project',[]);
+    linked.forEach(l => {
+      if (projPayMap[l.id]) {
+        projPayMap[l.id].inv += f(pay.fields,'Invoice Amount (₦)',0);
+        projPayMap[l.id].recv += f(pay.fields,'Amount Paid (₦)',0);
+      }
+    });
+  });
+
+  const entries = Object.values(projPayMap).filter(e => e.inv > 0).sort((a,b)=>b.inv-a.inv);
+  const fL = entries.map(e => { const n = e.name.split('—')[0].trim(); return n.length > 16 ? n.substring(0,16)+'…' : n; });
+  const invD = entries.map(e => +(e.inv/1e6).toFixed(1));
+  const recvD = entries.map(e => +(e.recv/1e6).toFixed(1));
+
+  mkChart('iwFinChart', 'bar', fL,
+    [
+      { label:'Invoiced', data:invD, backgroundColor:'#C8201E', borderRadius:4, borderSkipped:false },
+      { label:'Received', data:recvD, backgroundColor:'#1D9E75', borderRadius:4, borderSkipped:false }
+    ],
+    { scales: { y:{ticks:{callback:v=>'₦'+v+'M',font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}}, x:{ticks:{font:{size:10},maxRotation:30},grid:{display:false}} } }
+  );
+}
+
+// ─── RENDER IW SITES ───
+function renderIWSites() {
+  const iwProj = DB.projects.filter(isIdlewoods);
+  const iwProjIds = new Set(iwProj.map(p => p.id));
+  const iwInsp = DB.inspections.filter(i => {
+    const proj = f(i.fields,'Project',[]);
+    return proj.some(l => iwProjIds.has(l.id));
+  });
+
+  const defects = iwInsp.filter(i => f(i.fields,'Issues / Defects Found',false));
+
+  document.getElementById('iw-insp-metrics').innerHTML = [
+    { label: 'Total Inspections', val: iwInsp.length, cls: '' },
+    { label: 'Defects Found', val: defects.length, cls: defects.length > 0 ? 'metric-red' : '' },
+    { label: 'Clean Visits', val: iwInsp.length - defects.length, cls: 'metric-green' }
+  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
+
+  document.getElementById('iw-insp-list').innerHTML = iwInsp.map(i => {
+    const ref = f(i.fields,'Inspection Reference','Unnamed');
+    const date = f(i.fields,'Visit Date','');
+    const contractor = f(i.fields,'Contractor on Site','');
+    const defect = f(i.fields,'Issues / Defects Found',false);
+    const stage = f(i.fields,'Work Stage',{name:''}).name;
+    return `<div class="insp-row">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:500">${ref}</div>
+        <div style="font-size:11px;color:var(--text-3)">${contractor ? contractor + ' · ' : ''}${stage}</div>
+      </div>
+      <span class="insp-meta">${date}</span>
+      <span class="${defect ? 'defect-yes' : 'defect-no'}">${defect ? 'Defect' : 'Clear'}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER IW VENDORS ───
+function renderIWVendors() {
+  const iwVendors = DB.vendors.filter(v => {
+    const linked = f(v.fields,'Works With',[]);
+    return linked.some(l => l.name === 'Idlewoods');
+  });
+
+  document.getElementById('iw-vendor-list').innerHTML = iwVendors.map(v => {
+    const name = f(v.fields,'Vendor / Contractor Name','Unknown');
+    const trade = f(v.fields,'Trade / Specialty',{name:''}).name;
+    const contact = f(v.fields,'Contact Person','');
+    const rating = f(v.fields,'Rating',0);
+    const status = f(v.fields,'Status',{name:''}).name;
+    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+    return `<div class="vendor-row">
+      <div class="vendor-av">${initials(name)}</div>
+      <div class="vendor-info"><div class="vendor-name">${name}</div><div class="vendor-trade">${trade}${contact ? ' · ' + contact : ''}</div></div>
+      <span class="stars">${stars}</span>
+      <span class="pill ${status === 'Active' ? 'pill-design' : status === 'Vetting' ? 'pill-working' : 'pill-construction'}">${status}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── VIEW ROUTING ───
+const renderFns = {
+  'ee-overview': renderEEOverview,
+  'ee-financial': renderEEFinancials,
+  'ee-projects': renderEEProjects,
+  'ee-tasks': renderEETasks,
+  'ee-clients': renderEEClients,
+  'ee-deliverables': renderEEDeliverables,
+  'ee-inspections': renderEEInspections,
+  'ee-vendors': renderEEVendors,
+  'iw-overview': renderIWOverview,
+  'iw-projects': renderIWProjects,
+  'iw-financial': renderIWFinancial,
+  'iw-sites': renderIWSites,
+  'iw-vendors': renderIWVendors
+};
+
+const rendered = new Set();
+
+function switchView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const viewEl = document.getElementById('view-' + viewId);
+  if (viewEl) viewEl.classList.add('active');
+
+  const navEl = document.querySelector(`[data-view="${viewId}"]`);
+  if (navEl) navEl.classList.add('active');
+
+  if (!rendered.has(viewId) && renderFns[viewId]) {
+    renderFns[viewId]();
+    rendered.add(viewId);
+  }
+}
+
+// ─── NAV CLICK HANDLER ───
+document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+  item.addEventListener('click', () => {
+    switchView(item.dataset.view);
+    window.scrollTo(0, 0);
+    document.getElementById('mainContent').scrollTop = 0;
+  });
+});
+
+// ─── INIT ───
+async function init() {
+  try {
+    await loadAllData();
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+
+    renderFns['ee-overview']();
+    rendered.add('ee-overview');
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('loadingScreen').innerHTML = `
+      <div style="text-align:center;padding:40px;font-family:sans-serif">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:14px;color:#666">Failed to load data. Check console for details.</div>
+        <div style="font-size:11px;color:#999;margin-top:8px">${err.message}</div>
+      </div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1064,12 +1064,12 @@ const PALETTE = ['#C8201E','#1A5FA8','#1D9E75','#B8610A','#7B3FA8','#D4537E','#8
 // ─── IDENTIFY EKEMINI vs IDLEWOODS ───
 function isEkemini(proj) {
   const linked = f(proj.fields, 'Project For :', []);
-  return linked.some(l => l.name === 'Ekemini Evans');
+  return linked.some(l => l === 'recbaWk4p9hO1aw1S' || (l && l.id === 'recbaWk4p9hO1aw1S'));
 }
 
 function isIdlewoods(proj) {
   const linked = f(proj.fields, 'Project For :', []);
-  return linked.some(l => l.name === 'Idlewoods');
+  return linked.some(l => l === 'recLhj8rRXElD6UR5' || (l && l.id === 'recLhj8rRXElD6UR5'));
 }
 
 // ─── RENDER EE OVERVIEW ───
@@ -1080,7 +1080,7 @@ function renderEEOverview() {
   // Payments linked to EE projects
   const eePay = DB.payments.filter(p => {
     const linked = f(p.fields, 'Project', []);
-    return linked.some(l => eeProjIds.has(l.id));
+    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   const totalCV = eeProj.reduce((s, p) => s + (f(p.fields, 'Contract Value (₦)', 0)), 0);
@@ -1152,7 +1152,7 @@ function renderEEFinancials() {
   const eeProjIds = new Set(eeProj.map(p => p.id));
   const eePay = DB.payments.filter(p => {
     const linked = f(p.fields, 'Project', []);
-    return linked.some(l => eeProjIds.has(l.id));
+    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   const totalInv = eePay.reduce((s, p) => s + f(p.fields, 'Invoice Amount (₦)', 0), 0);
@@ -1264,7 +1264,7 @@ function renderEETasks() {
   // Tasks linked to EE projects
   const eeTasks = DB.tasks.filter(t => {
     const linked = f(t.fields, 'Project', []);
-    return linked.some(l => eeProjIds.has(l.id));
+    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   const urgent = eeTasks.filter(t => f(t.fields,'Priority',{name:''}).name === 'Urgent');
@@ -1337,7 +1337,7 @@ function renderEEClients() {
 
   const eeClients = DB.clients.filter(c => {
     const linked = f(c.fields, 'Projects', []);
-    return linked.some(l => eeProjIds.has(l.id));
+    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   // Lead source chart
@@ -1401,7 +1401,7 @@ function renderEEDeliverables() {
   const eeProjIds = new Set(eeProj.map(p => p.id));
   const eeDeliv = DB.deliverables.filter(d => {
     const linked = f(d.fields, 'Project', []);
-    return linked.some(l => eeProjIds.has(l.id));
+    return linked.some(l => eeProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   document.getElementById('badge-ee-deliv').textContent = eeDeliv.length;
@@ -1492,7 +1492,7 @@ function renderEEInspections() {
 function renderEEVendors() {
   const eeVendors = DB.vendors.filter(v => {
     const linked = f(v.fields, 'Works With', []);
-    return linked.some(l => l.name === 'Ekemini Evans');
+    return linked.some(l => l === 'recbaWk4p9hO1aw1S' || (l && l.id === 'recbaWk4p9hO1aw1S'));
   });
 
   const active = eeVendors.filter(v => f(v.fields,'Status',{name:''}).name === 'Active').length;
@@ -1529,7 +1529,7 @@ function renderIWOverview() {
   const iwProjIds = new Set(iwProj.map(p => p.id));
   const iwPay = DB.payments.filter(p => {
     const linked = f(p.fields, 'Project', []);
-    return linked.some(l => iwProjIds.has(l.id));
+    return linked.some(l => iwProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   const totalCV = iwProj.reduce((s, p) => s + f(p.fields,'Contract Value (₦)',0), 0);
@@ -1604,7 +1604,7 @@ function renderIWFinancial() {
   const iwProjIds = new Set(iwProj.map(p => p.id));
   const iwPay = DB.payments.filter(p => {
     const linked = f(p.fields,'Project',[]);
-    return linked.some(l => iwProjIds.has(l.id));
+    return linked.some(l => iwProjIds.has(typeof l === 'string' ? l : (l && l.id)));
   });
 
   const totalInv = iwPay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0);
@@ -1624,9 +1624,9 @@ function renderIWFinancial() {
   iwPay.forEach(pay => {
     const linked = f(pay.fields,'Project',[]);
     linked.forEach(l => {
-      if (projPayMap[l.id]) {
-        projPayMap[l.id].inv += f(pay.fields,'Invoice Amount (₦)',0);
-        projPayMap[l.id].recv += f(pay.fields,'Amount Paid (₦)',0);
+      const lid = typeof l === 'string' ? l : (l && l.id); if (projPayMap[lid]) {
+        projPayMap[lid].inv += f(pay.fields,'Invoice Amount (₦)',0);
+        projPayMap[lid].recv += f(pay.fields,'Amount Paid (₦)',0);
       }
     });
   });
@@ -1683,7 +1683,7 @@ function renderIWSites() {
 function renderIWVendors() {
   const iwVendors = DB.vendors.filter(v => {
     const linked = f(v.fields,'Works With',[]);
-    return linked.some(l => l.name === 'Idlewoods');
+    return linked.some(l => l === 'recLhj8rRXElD6UR5' || (l && l.id === 'recLhj8rRXElD6UR5'));
   });
 
   document.getElementById('iw-vendor-list').innerHTML = iwVendors.map(v => {

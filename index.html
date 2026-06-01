@@ -32,6 +32,23 @@
     --header-h: 56px;
   }
 
+  [data-theme="dark"] {
+    --bg: #111214;
+    --surface: #1C1E22;
+    --surface-2: #25282D;
+    --border: rgba(255,255,255,0.07);
+    --border-strong: rgba(255,255,255,0.13);
+    --text: #F0EEE9;
+    --text-2: #9A9790;
+    --text-3: #636059;
+    --red-light: #2A1414;
+    --amber-light: #261A0A;
+    --blue-light: #0E1825;
+    --green: #3D9E65;
+    --amber: #D4780E;
+    --blue: #4A8FD4;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
@@ -706,6 +723,9 @@
       <div style="margin-bottom:4px;font-weight:500;color:var(--text-2)">EE Studia Dashboard</div>
       Live data · Airtable sync<br/>
       <span id="last-updated">Updating…</span>
+      <div style="margin-top:10px">
+        <button onclick="toggleDark()" id="darkBtn" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text-2);font-size:11.5px;cursor:pointer;text-align:left;font-family:inherit">Dark mode</button>
+      </div>
     </div>
   </nav>
 
@@ -772,7 +792,7 @@
         <div class="page-title">EE Studia — Projects</div>
         <div class="page-sub">6 active personal commissions</div>
       </div>
-      <div class="project-list" id="ee-project-list"></div>
+      <div style="margin-bottom:12px"><input type="text" placeholder="Search projects..." oninput="filterList(this.value,&quot;ee-project-list&quot;)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none"/></div><div class="project-list" id="ee-project-list"></div>
       <div class="chart-card mt16">
         <div class="chart-title">Completion progress</div>
         <div class="chart-sub">% complete per project</div>
@@ -791,7 +811,7 @@
         <div class="chart-card">
           <div class="chart-title">All tasks</div>
           <div class="chart-sub">Sorted by priority</div>
-          <div id="ee-task-list"></div>
+          <div style="margin-bottom:12px"><input type="text" placeholder="Search tasks..." oninput="filterList(this.value,&quot;ee-task-list&quot;)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none"/></div><div id="ee-task-list"></div>
         </div>
         <div class="chart-card">
           <div class="chart-title">Tasks by category</div>
@@ -912,7 +932,7 @@
         <div class="page-title">Idlewoods — Projects</div>
         <div class="page-sub">7 commissions across all stages</div>
       </div>
-      <div class="project-list" id="iw-project-list"></div>
+      <div style="margin-bottom:12px"><input type="text" placeholder="Search projects..." oninput="filterList(this.value,&quot;iw-project-list&quot;)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none"/></div><div class="project-list" id="iw-project-list"></div>
       <div class="chart-card mt16">
         <div class="chart-title">Completion progress</div>
         <div class="chart-sub">% complete per project</div>
@@ -1587,107 +1607,47 @@ function buildInspCard(i) {
 
 // ─── RENDER EE INSPECTIONS ───
 function renderEEInspections() {
-  const eeProj = DB.projects.filter(isEkemini);
-  const eeProjIds = new Set(eeProj.map(p => p.id));
-  const eeInsp = DB.inspections.filter(i => {
-    const arch = f(i.fields, 'Architect', []);
-    const proj = f(i.fields, 'Project', []);
-    const projMatch = proj.some(l => {
-      const id = typeof l === 'string' ? l : (l && l.id);
-      return eeProjIds.has(id);
-    });
-    const archMatch = arch.some(a => {
-      const name = (a && a.name) || (typeof a === 'string' ? a : '');
-      return name === 'Ekemini Evans';
-    });
-    return projMatch || archMatch;
+  var eeProj=DB.projects.filter(isEkemini), eeProjIds=new Set(eeProj.map(function(p){return p.id;}));
+  var eeInsp=DB.inspections.filter(function(i){
+    var arch=f(i.fields,'Architect',[]),proj=f(i.fields,'Project',[]);
+    var pm=proj.some(function(l){return eeProjIds.has(typeof l==='string'?l:(l&&l.id));});
+    var am=arch.some(function(a){return ((a&&a.name)||(typeof a==='string'?a:''))==='Ekemini Evans';});
+    return pm||am;
   });
+  document.getElementById('badge-ee-insp').textContent=eeInsp.length;
+  var def=eeInsp.filter(function(i){return i.fields['Issues / Defects Found']===true;});
+  document.getElementById('ee-insp-metrics').innerHTML=[
+    {label:'Total Inspections',val:eeInsp.length,cls:''},
+    {label:'Defects Flagged',val:def.length,cls:def.length>0?'metric-red':'metric-green'},
+    {label:'Clean Visits',val:eeInsp.length-def.length,cls:'metric-green'}
+  ].map(function(m){return '<div class="metric-card"><div class="metric-label">'+m.label+'</div><div class="metric-value '+m.cls+'">'+m.val+'</div></div>';}).join('');
 
-  document.getElementById('badge-ee-insp').textContent = eeInsp.length;
-  const defects = eeInsp.filter(i => i.fields['Issues / Defects Found'] === true);
-
-  document.getElementById('ee-insp-metrics').innerHTML = [
-    { label: 'Total Inspections', val: eeInsp.length, cls: '' },
-    { label: 'Defects Flagged', val: defects.length, cls: defects.length > 0 ? 'metric-red' : 'metric-green' },
-    { label: 'Clean Visits', val: eeInsp.length - defects.length, cls: 'metric-green' }
-  ].map(function(m) {
-    return '<div class="metric-card"><div class="metric-label">' + m.label + '</div><div class="metric-value ' + m.cls + '">' + m.val + '</div></div>';
-  }).join('');
-
-  document.getElementById('ee-insp-list').innerHTML = eeInsp.map(function(i) {
-    return buildInspCard(i, {});
-  }).join('');
+  var html='<div style="margin-bottom:12px"><input type="text" placeholder="Search inspections..." oninput="filterGallery(this.value,&quot;ee-insp-grid&quot;)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none"/></div>';
+  html+='<div id="ee-insp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">';
+  eeInsp.forEach(function(i){
+    var ref=i.fields['Inspection Reference']||'Unnamed',date=i.fields['Visit Date']||'';
+    var contractor=i.fields['Contractor on Site']||'',defect=i.fields['Issues / Defects Found']===true;
+    var stage=fsel(i.fields,'Work Stage',''),obs=i.fields['Observations']||'';
+    var obsShort=obs.length>80?obs.substring(0,80)+'...':obs;
+    var photos=i.fields['Attachments']||[],fp=photos.length>0?photos[0]:null;
+    var imgHtml=fp
+      ?'<img src="'+(fp.thumbnails&&fp.thumbnails.large?fp.thumbnails.large.url:fp.url)+'" data-fullurl="'+fp.url+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:8px 8px 0 0;cursor:pointer" onclick="event.stopPropagation();openImageLightbox(this.dataset.fullurl)" onerror="this.parentElement.style.display=&quot;none&quot;"/>'
+      :'<div style="width:100%;aspect-ratio:4/3;background:var(--surface-2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px">No photo</div>';
+    var srch=(ref+' '+contractor+' '+stage+(defect?' defect':' clear')).toLowerCase().replace(/['"]/g,'');
+    html+='<div data-search="'+srch+'" data-inspid="'+i.id+'" onclick="openInspectionDetail(this.dataset.inspid)" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer">'+
+      imgHtml+'<div style="padding:10px">'+
+      '<div style="font-size:12px;font-weight:500;margin-bottom:4px">'+ref+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<span style="font-size:10px;color:var(--text-3)">'+(contractor||stage)+'</span>'+
+        '<span class="'+(defect?'defect-yes':'defect-no')+'">'+(defect?'Defect':'Clear')+'</span>'+
+      '</div>'+(obsShort?'<div style="font-size:10.5px;color:var(--text-2);line-height:1.4">'+obsShort+'</div>':'')+
+      '<div style="font-size:10px;color:var(--text-3);margin-top:4px">'+date+'</div></div></div>';
+  });
+  html+='</div>';
+  if(!eeInsp.length) html='<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">No inspections found</div>';
+  document.getElementById('ee-insp-list').innerHTML=html;
 }
 
-// ─── RENDER IW SITES ───
-function renderIWSites() {
-  var iwProj = DB.projects.filter(isIdlewoods);
-  var iwProjIds = new Set(iwProj.map(function(p) { return p.id; }));
-  var iwInsp = DB.inspections.filter(function(i) {
-    var proj = f(i.fields,'Project',[]);
-    var arch = f(i.fields,'Architect',[]);
-    var projMatch = proj.some(function(l) {
-      var id = typeof l === 'string' ? l : (l && l.id);
-      return iwProjIds.has(id);
-    });
-    var archMatch = arch.some(function(a) {
-      var name = (a && a.name) || (typeof a === 'string' ? a : '');
-      return name === 'Idlewoods';
-    });
-    return projMatch || archMatch;
-  });
-
-  var defects = iwInsp.filter(function(i) { return i.fields['Issues / Defects Found'] === true; });
-
-  document.getElementById('iw-insp-metrics').innerHTML = [
-    { label: 'Total Inspections', val: iwInsp.length, cls: '' },
-    { label: 'Defects Found', val: defects.length, cls: defects.length > 0 ? 'metric-red' : '' },
-    { label: 'Clean Visits', val: iwInsp.length - defects.length, cls: 'metric-green' }
-  ].map(function(m) {
-    return '<div class="metric-card"><div class="metric-label">' + m.label + '</div><div class="metric-value ' + m.cls + '">' + m.val + '</div></div>';
-  }).join('');
-
-  // Airtable-style gallery grid
-  var gridHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:4px">';
-  iwInsp.forEach(function(i) {
-    var ref = i.fields['Inspection Reference'] || 'Unnamed';
-    var date = i.fields['Visit Date'] || '';
-    var contractor = i.fields['Contractor on Site'] || '';
-    var defect = i.fields['Issues / Defects Found'] === true;
-    var stage = fsel(i.fields,'Work Stage','');
-    var obs = i.fields['Observations'] || '';
-    var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
-    var photos = i.fields['Attachments'] || [];
-    var firstPhoto = photos.length > 0 ? photos[0] : null;
-    var imgHtml;
-    if (firstPhoto) {
-      var thumb = (firstPhoto.thumbnails && firstPhoto.thumbnails.large) ? firstPhoto.thumbnails.large.url : firstPhoto.url;
-      imgHtml = '<img src="' + thumb + '" data-fullurl="' + firstPhoto.url + '" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:8px 8px 0 0;cursor:pointer" onclick="event.stopPropagation();openImageLightbox(this.dataset.fullurl)" onerror="this.parentElement.style.display=&quot;none&quot;"/>';
-    } else {
-      imgHtml = '<div style="width:100%;aspect-ratio:4/3;background:var(--surface-2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px">No photo</div>';
-    }
-    gridHtml += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer" data-inspid="' + i.id + '" onclick="openInspectionDetail(this.dataset.inspid)">' +
-      imgHtml +
-      '<div style="padding:10px">' +
-        '<div style="font-size:12px;font-weight:500;margin-bottom:4px">' + ref + '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
-          '<span style="font-size:10px;color:var(--text-3)">' + (contractor || stage) + '</span>' +
-          '<span class="' + (defect ? 'defect-yes' : 'defect-no') + '">' + (defect ? 'Defect' : 'Clear') + '</span>' +
-        '</div>' +
-        (obsShort ? '<div style="font-size:10.5px;color:var(--text-2);line-height:1.4">' + obsShort + '</div>' : '') +
-        '<div style="font-size:10px;color:var(--text-3);margin-top:4px">' + date + '</div>' +
-      '</div>' +
-    '</div>';
-  });
-  gridHtml += '</div>';
-
-  if (iwInsp.length === 0) {
-    gridHtml = '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">No inspection records found</div>';
-  }
-  document.getElementById('iw-insp-list').innerHTML = gridHtml;
-}
-
-// ─── RENDER EE VENDORS ───
 function renderEEVendors() {
   var eeVendors = DB.vendors.filter(function(v) {
     var linked = f(v.fields,'Works With',[]);
@@ -1788,7 +1748,9 @@ function renderIWProjects() {
       '<span style="color:var(--text-3);font-size:16px;margin-left:4px">&#8250;</span>' +
     '</div>';
   }).join('');
-
+  document.querySelectorAll('#iw-project-list .project-row').forEach(function(row,idx){
+    if(iwProj[idx]){var p=iwProj[idx];row.setAttribute('data-search',((p.fields['Project Name']||'')+' '+(p.fields['Location']||'')+' '+fsel(p.fields,'Status','')).toLowerCase());}
+  });
   var cL = iwProj.map(function(p) { var n = p.fields['Project Name'] || ''; return n.split('—')[0].trim().substring(0,16); });
   var cD = iwProj.map(function(p) { return Math.round((p.fields['Completion (%)']||0)*100); });
   mkChart('iwProgressChart','bar',cL,[{data:cD,backgroundColor:'#1A5FA8',borderRadius:5,borderSkipped:false}],
@@ -1843,6 +1805,48 @@ function renderIWFinancial() {
 }
 
 // ─── RENDER IW VENDORS ───
+// ─── RENDER IW SITES ───
+function renderIWSites() {
+  var iwProj=DB.projects.filter(isIdlewoods), iwProjIds=new Set(iwProj.map(function(p){return p.id;}));
+  var iwInsp=DB.inspections.filter(function(i){
+    var proj=f(i.fields,'Project',[]),arch=f(i.fields,'Architect',[]);
+    var pm=proj.some(function(l){return iwProjIds.has(typeof l==='string'?l:(l&&l.id));});
+    var am=arch.some(function(a){return ((a&&a.name)||(typeof a==='string'?a:''))==='Idlewoods';});
+    return pm||am;
+  });
+  var def=iwInsp.filter(function(i){return i.fields['Issues / Defects Found']===true;});
+  document.getElementById('iw-insp-metrics').innerHTML=[
+    {label:'Total Inspections',val:iwInsp.length,cls:''},
+    {label:'Defects Found',val:def.length,cls:def.length>0?'metric-red':''},
+    {label:'Clean Visits',val:iwInsp.length-def.length,cls:'metric-green'}
+  ].map(function(m){return '<div class="metric-card"><div class="metric-label">'+m.label+'</div><div class="metric-value '+m.cls+'">'+m.val+'</div></div>';}).join('');
+
+  var gridHtml='<div style="margin-bottom:12px"><input type="text" placeholder="Search inspections..." oninput="filterGallery(this.value,&quot;iw-insp-grid&quot;)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none"/></div>';
+  gridHtml+='<div id="iw-insp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">';
+  iwInsp.forEach(function(i){
+    var ref=i.fields['Inspection Reference']||'Unnamed',date=i.fields['Visit Date']||'';
+    var contractor=i.fields['Contractor on Site']||'',defect=i.fields['Issues / Defects Found']===true;
+    var stage=fsel(i.fields,'Work Stage',''),obs=i.fields['Observations']||'';
+    var obsShort=obs.length>80?obs.substring(0,80)+'...':obs;
+    var photos=i.fields['Attachments']||[],fp=photos.length>0?photos[0]:null;
+    var imgHtml=fp
+      ?'<img src="'+(fp.thumbnails&&fp.thumbnails.large?fp.thumbnails.large.url:fp.url)+'" data-fullurl="'+fp.url+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:8px 8px 0 0;cursor:pointer" onclick="event.stopPropagation();openImageLightbox(this.dataset.fullurl)" onerror="this.parentElement.style.display=&quot;none&quot;"/>'
+      :'<div style="width:100%;aspect-ratio:4/3;background:var(--surface-2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px">No photo</div>';
+    var srch=(ref+' '+contractor+' '+stage+(defect?' defect':' clear')).toLowerCase();
+    gridHtml+='<div data-search="'+srch+'" data-inspid="'+i.id+'" onclick="openInspectionDetail(this.dataset.inspid)" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer">'+
+      imgHtml+'<div style="padding:10px">'+
+      '<div style="font-size:12px;font-weight:500;margin-bottom:4px">'+ref+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<span style="font-size:10px;color:var(--text-3)">'+(contractor||stage)+'</span>'+
+        '<span class="'+(defect?'defect-yes':'defect-no')+'">'+(defect?'Defect':'Clear')+'</span>'+
+      '</div>'+(obsShort?'<div style="font-size:10.5px;color:var(--text-2);line-height:1.4">'+obsShort+'</div>':'')+
+      '<div style="font-size:10px;color:var(--text-3);margin-top:4px">'+date+'</div></div></div>';
+  });
+  gridHtml+='</div>';
+  if(!iwInsp.length) gridHtml='<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">No inspections found</div>';
+  document.getElementById('iw-insp-list').innerHTML=gridHtml;
+}
+
 function renderIWVendors() {
   const iwVendors = DB.vendors.filter(v => {
     const linked = f(v.fields,'Works With',[]);
@@ -2280,109 +2284,27 @@ function openDeliverableDetail(delivId) {
 
 // ─── CLIENT DETAIL ───
 function openClientDetail(clientId) {
-  const client = DB.clients.find(c => c.id === clientId);
-  if (!client) return;
-  const name = client.fields['Client Name'] || 'Unknown';
-  const type = (client.fields['Client Type'] || {}).name || '';
-  const source = (client.fields['Lead Source'] || {}).name || '';
-  const email = client.fields['Email'] || '';
-  const phone = client.fields['flditX4fhRi633J49'] || '';
-  const location = client.fields['fldmRP6YnB9BxxafS'] || '';
-  const notes = client.fields['fld1QXSwqJZuL4DEC'] || '';
-  const projLinks = client.fields['Projects'] || [];
-  const projNames = projLinks.map(l => (l.name || '').split('—')[0].trim()).filter(Boolean);
-
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${name}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      ${type ? `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:500">${type}</span>` : ''}
-      ${source ? `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">${source}</span>` : ''}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Contact</div>
-      ${email ? `<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:${email}" style="color:var(--blue)">${email}</a></span></div>` : ''}
-      ${phone ? `<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:${phone}" style="color:var(--blue)">${phone}</a></span></div>` : ''}
-      ${location ? `<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">${location}</span></div>` : ''}
-    </div>
-    ${projNames.length ? `<div class="detail-section">
-      <div class="detail-section-title">Projects</div>
-      ${projNames.map(n => `<div class="detail-list-item">${n}</div>`).join('')}
-    </div>` : ''}
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Client Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
-  `;
+  var client=DB.clients.find(function(c){return c.id===clientId;});
+  if(!client) return;
+  var name=client.fields['Client Name']||'Unknown';
+  var type=fsel(client.fields,'Client Type',''), source=fsel(client.fields,'Lead Source','');
+  var email=client.fields['Email']||'', phone=client.fields['Phone']||'';
+  var location=client.fields['Location']||'', state=fsel(client.fields,'State','');
+  var since=client.fields['Client Since']||'', notes=client.fields['Notes']||'';
+  var projLinks=client.fields['Projects']||[];
+  var projNames=projLinks.map(function(l){return (l.name||'').split('—')[0].trim();}).filter(Boolean);
+  var html='<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">✕</button></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+
+      (type?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:500">'+type+'</span>':'')+
+      (source?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+source+'</span>':'')+
+    '</div>'+
+    '<div class="detail-section"><div class="detail-section-title">Contact Information</div>'+
+      (email?'<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:'+email+'" style="color:var(--blue)">'+email+'</a></span></div>':'')+
+      (phone?'<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:'+phone+'" style="color:var(--blue)">'+phone+'</a></span></div>':'')+
+      (location?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+location+(state?', '+state:'')+'</span></div>':'')+
+      (since?'<div class="detail-field"><span class="detail-field-label">Client Since</span><span class="detail-field-val">'+since+'</span></div>':'')+
+    '</div>'+
+    (projNames.length?'<div class="detail-section"><div class="detail-section-title">Projects ('+projNames.length+')</div>'+projNames.map(function(n){return '<div class="detail-list-item">'+n+'</div>';}).join('')+'</div>':'')+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Client Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
   showDetailPanel(html);
 }
-
-// ─── SHARED PANEL UTILS ───
-function showDetailPanel(html) {
-  closeDetailPanel();
-  const overlay = document.createElement('div');
-  overlay.className = 'detail-overlay';
-  overlay.id = 'detailPanelOverlay';
-  overlay.onclick = (e) => { if (e.target === overlay) closeDetailPanel(); };
-  const panel = document.createElement('div');
-  panel.className = 'detail-panel';
-  panel.innerHTML = html;
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-}
-
-function closeDetailPanel() {
-  const existing = document.getElementById('detailPanelOverlay');
-  if (existing) existing.remove();
-  const projOverlay = document.getElementById('projectDetailOverlay');
-  if (projOverlay) projOverlay.remove();
-}
-
-// ─── INIT ───
-async function init() {
-  try {
-    var bar = document.getElementById('loadingBar');
-    var hint = document.getElementById('loadingHint');
-    var txt = document.getElementById('loadingText');
-
-    // Check if we have cache
-    try {
-      var cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        var p = JSON.parse(cached);
-        var age = Math.round((Date.now() - p.ts) / 1000);
-        if (age < 300) {
-          txt.textContent = 'Loading from cache…';
-          hint.textContent = 'Data ' + age + 's old · refreshes every 5 min';
-        }
-      }
-    } catch(e) {}
-
-    if (bar) bar.style.width = '20%';
-    await loadAllData();
-    if (bar) bar.style.width = '100%';
-
-    await new Promise(function(r) { setTimeout(r, 200); });
-    document.getElementById('loadingScreen').style.display = 'none';
-    document.getElementById('appShell').style.display = 'flex';
-
-    const now = new Date();
-    document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
-
-    renderFns['ee-overview']();
-    rendered.add('ee-overview');
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById('loadingScreen').innerHTML = `
-      <div style="text-align:center;padding:40px;font-family:sans-serif">
-        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
-        <div style="font-size:14px;color:#666">Failed to load data. Check console for details.</div>
-        <div style="font-size:11px;color:#999;margin-top:8px">${err.message}</div>
-      </div>`;
-  }
-}
-
-init();
-</script>
-</body>
-</html>

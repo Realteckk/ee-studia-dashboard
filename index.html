@@ -1528,6 +1528,36 @@ function renderEEDeliverables() {
   }
 }
 
+
+// ─── INSPECTION CARD BUILDER (shared) ───
+function buildInspCard(i) {
+  var ref = i.fields['Inspection Reference'] || 'Unnamed';
+  var date = i.fields['Visit Date'] || '';
+  var contractor = i.fields['Contractor on Site'] || '';
+  var defect = i.fields['Issues / Defects Found'] === true;
+  var stage = fsel(i.fields, 'Work Stage', '');
+  var photos = i.fields['Attachments'] || [];
+  var firstPhoto = photos.length > 0 ? photos[0] : null;
+  var photoHtml = '';
+  if (firstPhoto) {
+    var thumb = (firstPhoto.thumbnails && firstPhoto.thumbnails.large) ? firstPhoto.thumbnails.large.url : firstPhoto.url;
+    photoHtml = '<img src="' + thumb + '" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer;display:block" data-fullurl="' + firstPhoto.url + '" onclick="event.stopPropagation();openImageLightbox(this.dataset.fullurl)" onerror="this.style.display=&quot;none&quot;"/>';
+  }
+  return '<div class="insp-row" style="flex-direction:column;align-items:stretch;cursor:pointer;padding:12px 0" data-inspid="' + i.id + '" onclick="openInspectionDetail(this.dataset.inspid)">' +
+    '<div style="display:flex;align-items:center;gap:8px">' +
+      '<div style="flex:1">' +
+        '<div style="font-size:12px;font-weight:500">' + ref + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3)">' + (contractor ? contractor + ' · ' : '') + stage + '</div>' +
+      '</div>' +
+      '<span style="font-size:11px;color:var(--text-3)">' + date + '</span>' +
+      '<span class="' + (defect ? 'defect-yes' : 'defect-no') + '">' + (defect ? 'Defect' : 'Clear') + '</span>' +
+      '<span style="color:var(--text-3);font-size:16px;margin-left:4px">&#8250;</span>' +
+    '</div>' +
+    photoHtml +
+  '</div>';
+}
+
+
 // ─── RENDER EE INSPECTIONS ───
 function renderEEInspections() {
   const eeProj = DB.projects.filter(isEkemini);
@@ -1535,253 +1565,99 @@ function renderEEInspections() {
   const eeInsp = DB.inspections.filter(i => {
     const arch = f(i.fields, 'Architect', []);
     const proj = f(i.fields, 'Project', []);
-    return proj.some(l => eeProjIds.has(l.id)) || arch.some(a => a.name === 'Ekemini Evans');
+    const projMatch = proj.some(l => {
+      const id = typeof l === 'string' ? l : (l && l.id);
+      return eeProjIds.has(id);
+    });
+    const archMatch = arch.some(a => {
+      const name = (a && a.name) || (typeof a === 'string' ? a : '');
+      return name === 'Ekemini Evans';
+    });
+    return projMatch || archMatch;
   });
 
   document.getElementById('badge-ee-insp').textContent = eeInsp.length;
-
-  const defects = eeInsp.filter(i => f(i.fields, 'Issues / Defects Found', false));
+  const defects = eeInsp.filter(i => i.fields['Issues / Defects Found'] === true);
 
   document.getElementById('ee-insp-metrics').innerHTML = [
     { label: 'Total Inspections', val: eeInsp.length, cls: '' },
     { label: 'Defects Flagged', val: defects.length, cls: defects.length > 0 ? 'metric-red' : 'metric-green' },
     { label: 'Clean Visits', val: eeInsp.length - defects.length, cls: 'metric-green' }
-  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
-
-  document.getElementById('ee-insp-list').innerHTML = eeInsp.map(i => {
-    const ref = f(i.fields, 'Inspection Reference', 'Unnamed');
-    const date = f(i.fields, 'Visit Date', '');
-    const contractor = f(i.fields, 'Contractor on Site', '');
-    const defect = f(i.fields, 'Issues / Defects Found', false);
-    const stage = fsel(i.fields,'Work Stage','');
-    return `<div class="insp-row">
-      <div style="flex:1">
-        <div style="font-size:12px;font-weight:500">${ref}</div>
-        <div style="font-size:11px;color:var(--text-3)">${contractor ? contractor + ' · ' : ''}${stage}</div>
-      </div>
-      <span class="insp-meta">${date}</span>
-      <span class="${defect ? 'defect-yes' : 'defect-no'}">${defect ? 'Defect' : 'Clear'}</span>
-    </div>`;
-  }).join('');
-}
-
-// ─── RENDER EE VENDORS ───
-function renderEEVendors() {
-  const eeVendors = DB.vendors.filter(v => {
-    const linked = f(v.fields, 'Works With', []);
-    return linked.some(l => {
-      const id = typeof l === 'string' ? l : (l && l.id);
-      return id === 'recbaWk4p9hO1aw1S';
-    });
-  });
-
-  const active = eeVendors.filter(v => (fsel(v.fields,'Status','')) === 'Active').length;
-  const vetting = eeVendors.filter(v => (fsel(v.fields,'Status','')) === 'Vetting').length;
-
-  const avgRating = eeVendors.length ? (eeVendors.reduce((s,v) => s + f(v.fields,'Rating',0), 0) / eeVendors.length).toFixed(1) : 0;
-  const tradeTypes = new Set(eeVendors.map(v => fsel(v.fields,'Trade / Specialty',''))).size;
-  document.getElementById('ee-vendor-metrics').innerHTML = [
-    { label: 'Total Vendors', val: eeVendors.length, cls: '' },
-    { label: 'Active', val: active, cls: 'metric-green' },
-    { label: 'Trade Types', val: tradeTypes, cls: '' },
-    { label: 'Avg Rating', val: avgRating + ' ★', cls: 'metric-amber' }
-  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
-
-  document.getElementById('ee-vendor-list').innerHTML = eeVendors.map(v => {
-    const name = f(v.fields, 'Vendor / Contractor Name', 'Unknown');
-    const trade = fsel(v.fields,'Trade / Specialty','') || '';
-    const contact = f(v.fields, 'Contact Person', '');
-    const rating = f(v.fields, 'Rating', 0);
-    const status = fsel(v.fields,'Status','') || '';
-    const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-    return `<div class="vendor-row">
-      <div class="vendor-av">${initials(name)}</div>
-      <div class="vendor-info">
-        <div class="vendor-name">${name}</div>
-        <div class="vendor-trade">${trade}${contact ? ' · ' + contact : ''}</div>
-      </div>
-      <span class="stars">${stars}</span>
-      <span class="pill ${status === 'Active' ? 'pill-design' : status === 'Vetting' ? 'pill-working' : 'pill-construction'}">${status}</span>
-    </div>`;
-  }).join('');
-}
-
-// ─── RENDER IW OVERVIEW ───
-function renderIWOverview() {
-  const iwProj = DB.projects.filter(isIdlewoods);
-  const iwProjIds = new Set(iwProj.map(p => p.id));
-  const iwPay = DB.payments.filter(p => {
-    const linked = f(p.fields, 'Project', []);
-    return linked.some(l => iwProjIds.has(typeof l === 'string' ? l : (l && l.id)));
-  });
-
-  const avgPct = Math.round(iwProj.reduce((s, p) => s + f(p.fields,'Completion (%)',0), 0) / Math.max(iwProj.length,1) * 100);
-  const iwProjIds2 = new Set(iwProj.map(p => p.id));
-  const iwInspCount = DB.inspections.filter(i => {
-    const proj = f(i.fields,'Project',[]);
-    return proj.some(l => iwProjIds2.has(typeof l === 'string' ? l : (l && l.id)));
-  });
-  const iwDefects = iwInspCount.filter(i => f(i.fields,'Issues / Defects Found', false));
-  document.getElementById('iw-sb-avg').textContent = avgPct + '%';
-  document.getElementById('iw-sb-insp').textContent = iwInspCount.length;
-  document.getElementById('iw-sb-defects').textContent = iwDefects.length;
-
-  const stageCounts = {};
-  iwProj.forEach(p => {
-    const s = fsel(p.fields,'Status','Unknown');
-    stageCounts[s] = (stageCounts[s] || 0) + 1;
-  });
-  const sL = Object.keys(stageCounts);
-  const sD = sL.map(k => stageCounts[k]);
-  const sC = sL.map((_,i) => PALETTE[i % PALETTE.length]);
-
-  document.getElementById('iw-stage-legend').innerHTML = sL.map((l,i) =>
-    `<span class="legend-item"><span class="legend-sq" style="background:${sC[i]}"></span>${l}</span>`
-  ).join('');
-
-  mkChart('iwStageChart', 'doughnut', sL,
-    [{ data: sD, backgroundColor: sC, borderWidth: 0 }],
-    { cutout: '62%' }
-  );
-
-  const sorted = [...iwProj].sort((a,b) => f(b.fields,'Contract Value (₦)',0) - f(a.fields,'Contract Value (₦)',0));
-  const vL = sorted.map(p => { const n = f(p.fields,'Project Name',''); return n.length > 18 ? n.substring(0,18)+'…' : n; });
-  const vD = sorted.map(p => +(f(p.fields,'Contract Value (₦)',0)/1e6).toFixed(1));
-
-  mkChart('iwValueChart', 'bar', vL,
-    [{ data: vD, backgroundColor: '#1A5FA8', borderRadius: 5, borderSkipped: false }],
-    { scales: { y: { ticks: { callback: v => '₦' + v + 'M', font:{size:11} }, grid:{color:'rgba(0,0,0,0.06)'} }, x: { ticks:{font:{size:10},maxRotation:30}, grid:{display:false} } } }
-  );
-}
-
-// ─── RENDER IW PROJECTS ───
-function renderIWProjects() {
-  const iwProj = DB.projects.filter(isIdlewoods).sort((a,b) => f(b.fields,'Contract Value (₦)',0) - f(a.fields,'Contract Value (₦)',0));
-  const dotColors = ['#C8201E','#1A5FA8','#1D9E75','#B8610A','#D4537E','#7B3FA8','#888780'];
-
-  document.getElementById('iw-project-list').innerHTML = iwProj.map((p, i) => {
-    const name = f(p.fields,'Project Name','Unnamed');
-    const loc = f(p.fields,'Location','');
-    const type = fsel(p.fields,'Project Type','');
-    const status = fsel(p.fields,'Status','');
-    const cv = f(p.fields,'Contract Value (₦)',0);
-    const pct = Math.round(f(p.fields,'Completion (%)',0)*100);
-    return `<div class="project-row" style="cursor:pointer" onclick="openProjectDetail('${p.id}')">
-      <span class="project-dot" style="background:${dotColors[i]}"></span>
-      <div class="project-info"><div class="project-name">${name}</div><div class="project-loc">${loc} · ${type}</div></div>
-      <span class="pill ${pillClass(status)}">${status}</span>
-      <div class="project-right"><div class="project-val">${naira(cv)}</div><div class="project-pct">${pct}%</div></div>
-      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:#1A5FA8"></div></div>
-      <span style="color:var(--text-3);font-size:16px;margin-left:4px">›</span>
-    </div>`;
+  ].map(function(m) {
+    return '<div class="metric-card"><div class="metric-label">' + m.label + '</div><div class="metric-value ' + m.cls + '">' + m.val + '</div></div>';
   }).join('');
 
-  const cL = iwProj.map(p => { const n = f(p.fields,'Project Name',''); return n.split('—')[0].trim().substring(0,16); });
-  const cD = iwProj.map(p => Math.round(f(p.fields,'Completion (%)',0)*100));
-
-  mkChart('iwProgressChart', 'bar', cL,
-    [{ data: cD, backgroundColor: '#1A5FA8', borderRadius: 5, borderSkipped: false }],
-    { indexAxis: 'y', scales: { x: { max: 100, ticks:{callback:v=>v+'%',font:{size:11}}, grid:{color:'rgba(0,0,0,0.06)'} }, y:{ticks:{font:{size:10}},grid:{display:false}} } }
-  );
-}
-
-// ─── RENDER IW FINANCIAL ───
-function renderIWFinancial() {
-  const iwProj = DB.projects.filter(isIdlewoods);
-  const iwProjIds = new Set(iwProj.map(p => p.id));
-  const iwPay = DB.payments.filter(p => {
-    const linked = f(p.fields,'Project',[]);
-    return linked.some(l => iwProjIds.has(typeof l === 'string' ? l : (l && l.id)));
-  });
-
-  const totalInv = iwPay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0);
-  const totalRecv = iwPay.reduce((s,p) => s + f(p.fields,'Amount Paid (₦)',0), 0);
-  const overdue = iwPay.filter(p => (fsel(p.fields,'Status','') || '').toLowerCase().includes('overdue'));
-
-  document.getElementById('iw-fin-metrics').innerHTML = [
-    { label: 'Total Invoiced', val: naira(totalInv), cls: '' },
-    { label: 'Collected', val: naira(totalRecv), cls: 'metric-green' },
-    { label: 'Overdue', val: naira(overdue.reduce((s,p)=>s+f(p.fields,'Invoice Amount (₦)',0),0)), cls: 'metric-red' },
-    { label: 'Collection Rate', val: Math.round(totalRecv/totalInv*100)+'%', cls: '' }
-  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
-
-  // Build per-project data
-  const projPayMap = {};
-  iwProj.forEach(p => { projPayMap[p.id] = { inv: 0, recv: 0, name: f(p.fields,'Project Name','') }; });
-  iwPay.forEach(pay => {
-    const linked = f(pay.fields,'Project',[]);
-    linked.forEach(l => {
-      const lid = typeof l === 'string' ? l : (l && l.id); if (projPayMap[lid]) {
-        projPayMap[lid].inv += f(pay.fields,'Invoice Amount (₦)',0);
-        projPayMap[lid].recv += f(pay.fields,'Amount Paid (₦)',0);
-      }
-    });
-  });
-
-  const entries = Object.values(projPayMap).filter(e => e.inv > 0).sort((a,b)=>b.inv-a.inv);
-  const fL = entries.map(e => { const n = e.name.split('—')[0].trim(); return n.length > 16 ? n.substring(0,16)+'…' : n; });
-  const invD = entries.map(e => +(e.inv/1e6).toFixed(1));
-  const recvD = entries.map(e => +(e.recv/1e6).toFixed(1));
-
-  mkChart('iwFinChart', 'bar', fL,
-    [
-      { label:'Invoiced', data:invD, backgroundColor:'#C8201E', borderRadius:4, borderSkipped:false },
-      { label:'Received', data:recvD, backgroundColor:'#1D9E75', borderRadius:4, borderSkipped:false }
-    ],
-    { scales: { y:{ticks:{callback:v=>'₦'+v+'M',font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}}, x:{ticks:{font:{size:10},maxRotation:30},grid:{display:false}} } }
-  );
+  document.getElementById('ee-insp-list').innerHTML = eeInsp.map(function(i) {
+    return buildInspCard(i, {});
+  }).join('');
 }
 
 // ─── RENDER IW SITES ───
 function renderIWSites() {
-  const iwProj = DB.projects.filter(isIdlewoods);
-  const iwProjIds = new Set(iwProj.map(p => p.id));
-  const idlewoodsId = 'recLhj8rRXElD6UR5';
-  const iwInsp = DB.inspections.filter(i => {
-    const proj = f(i.fields,'Project',[]);
-    const arch = f(i.fields,'Architect',[]);
-    const projMatch = proj.some(l => {
-      const id = typeof l === 'string' ? l : (l && l.id);
+  var iwProj = DB.projects.filter(isIdlewoods);
+  var iwProjIds = new Set(iwProj.map(function(p) { return p.id; }));
+  var iwInsp = DB.inspections.filter(function(i) {
+    var proj = f(i.fields,'Project',[]);
+    var arch = f(i.fields,'Architect',[]);
+    var projMatch = proj.some(function(l) {
+      var id = typeof l === 'string' ? l : (l && l.id);
       return iwProjIds.has(id);
     });
-    const archMatch = arch.some(a => {
-      const id = typeof a === 'string' ? a : (a && a.id);
-      return id === idlewoodsId;
+    var archMatch = arch.some(function(a) {
+      var name = (a && a.name) || (typeof a === 'string' ? a : '');
+      return name === 'Idlewoods';
     });
     return projMatch || archMatch;
   });
 
-  const defects = iwInsp.filter(i => f(i.fields,'Issues / Defects Found',false));
+  var defects = iwInsp.filter(function(i) { return i.fields['Issues / Defects Found'] === true; });
 
   document.getElementById('iw-insp-metrics').innerHTML = [
     { label: 'Total Inspections', val: iwInsp.length, cls: '' },
     { label: 'Defects Found', val: defects.length, cls: defects.length > 0 ? 'metric-red' : '' },
     { label: 'Clean Visits', val: iwInsp.length - defects.length, cls: 'metric-green' }
-  ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
-
-  document.getElementById('iw-insp-list').innerHTML = iwInsp.map(i => {
-    const ref = f(i.fields,'Inspection Reference','Unnamed');
-    const date = f(i.fields,'Visit Date','');
-    const contractor = f(i.fields,'Contractor on Site','');
-    const defect = f(i.fields,'Issues / Defects Found',false);
-    const stage = fsel(i.fields,'Work Stage','');
-    const photos = f(i.fields,'Attachments',[]);
-    const photoHtml = photos.length ? `<img src="${photos[0].thumbnails && photos[0].thumbnails.large ? photos[0].thumbnails.large.url : photos[0].url}"
-      style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer;display:block"
-      onclick="openImageLightbox('${photos[0].url}')" onerror="this.style.display='none'"/>` : '';
-    return `<div class="insp-row" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="openInspectionDetail('${i.id}')">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:500">${ref}</div>
-          <div style="font-size:11px;color:var(--text-3)">${contractor ? contractor + ' · ' : ''}${stage}</div>
-        </div>
-        <span style="font-size:11px;color:var(--text-3)">${date}</span>
-        <span class="${defect ? 'defect-yes' : 'defect-no'}">${defect ? 'Defect' : 'Clear'}</span>
-        <span style="color:var(--text-3);font-size:16px">›</span>
-      </div>
-      ${photoHtml}
-    </div>`;
+  ].map(function(m) {
+    return '<div class="metric-card"><div class="metric-label">' + m.label + '</div><div class="metric-value ' + m.cls + '">' + m.val + '</div></div>';
   }).join('');
+
+  // Airtable-style gallery grid
+  var gridHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:4px">';
+  iwInsp.forEach(function(i) {
+    var ref = i.fields['Inspection Reference'] || 'Unnamed';
+    var date = i.fields['Visit Date'] || '';
+    var contractor = i.fields['Contractor on Site'] || '';
+    var defect = i.fields['Issues / Defects Found'] === true;
+    var stage = fsel(i.fields,'Work Stage','');
+    var obs = i.fields['Observations'] || '';
+    var obsShort = obs.length > 80 ? obs.substring(0, 80) + '…' : obs;
+    var photos = i.fields['Attachments'] || [];
+    var firstPhoto = photos.length > 0 ? photos[0] : null;
+    var imgHtml;
+    if (firstPhoto) {
+      var thumb = (firstPhoto.thumbnails && firstPhoto.thumbnails.large) ? firstPhoto.thumbnails.large.url : firstPhoto.url;
+      imgHtml = '<img src="' + thumb + '" data-fullurl="' + firstPhoto.url + '" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;border-radius:8px 8px 0 0;cursor:pointer" onclick="event.stopPropagation();openImageLightbox(this.dataset.fullurl)" onerror="this.parentElement.style.display=&quot;none&quot;"/>';
+    } else {
+      imgHtml = '<div style="width:100%;aspect-ratio:4/3;background:var(--surface-2);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text-3);font-size:11px">No photo</div>';
+    }
+    gridHtml += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer" data-inspid="' + i.id + '" onclick="openInspectionDetail(this.dataset.inspid)">' +
+      imgHtml +
+      '<div style="padding:10px">' +
+        '<div style="font-size:12px;font-weight:500;margin-bottom:4px">' + ref + '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">' +
+          '<span style="font-size:10px;color:var(--text-3)">' + (contractor || stage) + '</span>' +
+          '<span class="' + (defect ? 'defect-yes' : 'defect-no') + '">' + (defect ? 'Defect' : 'Clear') + '</span>' +
+        '</div>' +
+        (obsShort ? '<div style="font-size:10.5px;color:var(--text-2);line-height:1.4">' + obsShort + '</div>' : '') +
+        '<div style="font-size:10px;color:var(--text-3);margin-top:4px">' + date + '</div>' +
+      '</div>' +
+    '</div>';
+  });
+  gridHtml += '</div>';
+
+  if (iwInsp.length === 0) {
+    gridHtml = '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px">No inspection records found</div>';
+  }
+  document.getElementById('iw-insp-list').innerHTML = gridHtml;
 }
 
 // ─── RENDER IW VENDORS ───
@@ -1912,7 +1788,7 @@ function openProjectDetail(projectId) {
   const inspIds = new Set(inspLinks.map(l => typeof l === 'string' ? l : (l && l.id)));
   const insps = DB.inspections.filter(i => inspIds.has(i.id));
 
-  const imgHtml = image.length ? `<img src="${image[0].url}" class="detail-img" onerror="this.style.display='none'"/>` : '';
+  const imgHtml = image.length ? `<img src="${image[0].url}" class="detail-img" onerror="this.style.display=&quot;none&quot;"/>` : '';
 
   const html = `
     <div class="detail-close">
@@ -2080,93 +1956,94 @@ function openTaskDetail(taskId) {
 
 // ─── INSPECTION DETAIL ───
 function openInspectionDetail(inspId) {
-  const insp = DB.inspections.find(i => i.id === inspId);
+  var insp = DB.inspections.find(function(i) { return i.id === inspId; });
   if (!insp) return;
-  const ref = insp.fields['Inspection Reference'] || 'Unnamed';
-  const date = insp.fields['Visit Date'] || '';
-  const scheduled = insp.fields['Next Visit Date'] || '';
-  const contractor = insp.fields['Contractor on Site'] || '';
-  const defect = insp.fields['Issues / Defects Found'] || false;
-  const stage = (insp.fields['Work Stage'] || {}).name || '';
-  const type = fsel(insp.fields,'Visit Type','') || (insp.fields['Visit Type'] && insp.fields['Visit Type'].name) || '';
-  const notes = insp.fields['Observations'] || '';
-  const action = insp.fields['Action Required'] || '';
-  const photos = insp.fields['Attachments'] || [];
+  var ref = insp.fields['Inspection Reference'] || 'Unnamed';
+  var date = insp.fields['Visit Date'] || '';
+  var scheduled = insp.fields['Next Visit Date'] || '';
+  var contractor = insp.fields['Contractor on Site'] || '';
+  var defect = insp.fields['Issues / Defects Found'] === true;
+  var stage = fsel(insp.fields, 'Work Stage', '');
+  var visitType = fsel(insp.fields, 'Visit Type', '');
+  var notes = insp.fields['Observations'] || '';
+  var action = insp.fields['Action Required'] || '';
+  var photos = insp.fields['Attachments'] || [];
+  var projLinks = insp.fields['Project'] || [];
+  var projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
+  var proj = projId ? DB.projects.find(function(p) { return p.id === projId; }) : null;
+  var projName = proj ? (proj.fields['Project Name'] || '').split('\u2014')[0].trim() : '';
 
-  const photosHtml = photos.map(p => {
-    const thumbUrl = (p.thumbnails && p.thumbnails.large && p.thumbnails.large.url) ? p.thumbnails.large.url : p.url;
-    return `<div style="margin-bottom:10px">
-      <img src="${thumbUrl}" 
-        style="width:100%;border-radius:8px;cursor:pointer;display:block;object-fit:cover;max-height:260px" 
-        onclick="openImageLightbox('${p.url}')" onerror="this.style.display='none'"/>
-      <div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">Click to enlarge</div>
-    </div>`;
+  var photosHtml = photos.map(function(p) {
+    var thumbUrl = (p.thumbnails && p.thumbnails.large && p.thumbnails.large.url) ? p.thumbnails.large.url : p.url;
+    return '<div style="margin-bottom:10px">' +
+      '<img src="' + thumbUrl + '" ' +
+      'style="width:100%;border-radius:8px;cursor:pointer;display:block;object-fit:cover;aspect-ratio:16/9" ' +
+      'onclick="openImageLightbox(\'' + p.url + '\')" onerror="this.style.display=&quot;none&quot;"/>' +
+      '<div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">Tap to enlarge</div>' +
+    '</div>';
   }).join('');
 
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${ref}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <span class="${defect ? 'defect-yes' : 'defect-no'}" style="display:inline-block;margin-bottom:16px">${defect ? 'Defect Found' : 'No Defects'}</span>
-    ${photosHtml ? `<div style="margin-bottom:16px">${photosHtml}</div>` : ''}
-    <div class="detail-section">
-      <div class="detail-section-title">Inspection Details</div>
-      ${date ? `<div class="detail-field"><span class="detail-field-label">Visit Date</span><span class="detail-field-val">${date}</span></div>` : ''}
-      ${contractor ? `<div class="detail-field"><span class="detail-field-label">Contractor on Site</span><span class="detail-field-val">${contractor}</span></div>` : ''}
-      ${stage ? `<div class="detail-field"><span class="detail-field-label">Work Stage</span><span class="detail-field-val">${stage}</span></div>` : ''}
-      ${type ? `<div class="detail-field"><span class="detail-field-label">Inspection Type</span><span class="detail-field-val">${type}</span></div>` : ''}
-    </div>
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Site Observations</div><div class="detail-notes">${notes}</div></div>` : ''}
-    ${action ? `<div class="detail-section"><div class="detail-section-title">Action Required</div><div class="detail-notes" style="border-left:3px solid var(--red);padding-left:12px">${action}</div></div>` : ''}
-  `;
+  var html = '<div class="detail-close">' +
+    '<div class="detail-title">' + ref + '</div>' +
+    '<button class="detail-close-btn" onclick="closeDetailPanel()">\u2715</button>' +
+  '</div>' +
+  '<span class="' + (defect ? 'defect-yes' : 'defect-no') + '" style="display:inline-block;margin-bottom:12px">' + (defect ? 'Defect Found' : 'No Defects') + '</span>' +
+  (projName ? '<div style="font-size:12px;color:var(--text-2);margin-bottom:12px">' + projName + '</div>' : '') +
+  (photosHtml ? '<div style="margin-bottom:16px">' + photosHtml + '</div>' : '') +
+  '<div class="detail-section">' +
+    '<div class="detail-section-title">Inspection Details</div>' +
+    (date ? '<div class="detail-field"><span class="detail-field-label">Visit Date</span><span class="detail-field-val">' + date + '</span></div>' : '') +
+    (scheduled ? '<div class="detail-field"><span class="detail-field-label">Next Visit</span><span class="detail-field-val">' + scheduled + '</span></div>' : '') +
+    (contractor ? '<div class="detail-field"><span class="detail-field-label">Contractor</span><span class="detail-field-val">' + contractor + '</span></div>' : '') +
+    (stage ? '<div class="detail-field"><span class="detail-field-label">Work Stage</span><span class="detail-field-val">' + stage + '</span></div>' : '') +
+    (visitType ? '<div class="detail-field"><span class="detail-field-label">Visit Type</span><span class="detail-field-val">' + visitType + '</span></div>' : '') +
+  '</div>' +
+  (notes ? '<div class="detail-section"><div class="detail-section-title">Site Observations</div><div class="detail-notes">' + notes + '</div></div>' : '') +
+  (action ? '<div class="detail-section"><div class="detail-section-title">Action Required</div><div class="detail-notes" style="border-left:3px solid var(--red);padding-left:12px">' + action + '</div></div>' : '');
+
   showDetailPanel(html);
 }
 
-// ─── VENDOR DETAIL ───
 function openVendorDetail(vendorId) {
-  const vendor = DB.vendors.find(v => v.id === vendorId);
+  var vendor = DB.vendors.find(function(v) { return v.id === vendorId; });
   if (!vendor) return;
-  const name = vendor.fields['Vendor / Contractor Name'] || 'Unknown';
-  const trade = (vendor.fields['Trade / Specialty'] || {}).name || '';
-  const contact = vendor.fields['Contact Person'] || '';
-  const phone = vendor.fields['flduooPCsWLpLr3br'] || '';
-  const email = vendor.fields['fldzCLhTk5pUPrunS'] || '';
-  const location = vendor.fields['fldGEE4x6xmOgjrdg'] || '';
-  const rating = vendor.fields['Rating'] || 0;
-  const status = (vendor.fields['Status'] || {}).name || '';
-  const notes = vendor.fields['fldsMPra7SjpwK39J'] || '';
-  const stars = '★'.repeat(Math.min(rating,5)) + '☆'.repeat(Math.max(0,5-rating));
-  const projLinks = vendor.fields['Projects'] || vendor.fields['fldAXpEpJx6rrSww8'] || [];
-  const projNames = projLinks.map(l => (l.name || '').split('—')[0].trim()).filter(Boolean);
+  var name = vendor.fields['Vendor / Contractor Name'] || 'Unknown';
+  var trade = fsel(vendor.fields, 'Trade / Specialty', '');
+  var contact = vendor.fields['Contact Person'] || '';
+  var phone = vendor.fields['Phone'] || '';
+  var email = vendor.fields['Email'] || '';
+  var location = vendor.fields['Location'] || '';
+  var rating = vendor.fields['Rating'] || 0;
+  var status = fsel(vendor.fields, 'Status', '');
+  var notes = vendor.fields['Notes'] || '';
+  var projLinks = vendor.fields['Projects'] || [];
+  var projNames = projLinks.map(function(l) {
+    return (l.name || '').split('\u2014')[0].trim();
+  }).filter(Boolean);
+  var stars = '\u2605'.repeat(Math.min(rating, 5)) + '\u2606'.repeat(Math.max(0, 5 - rating));
 
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${name}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-      <span style="font-size:16px;color:#E8A000">${stars}</span>
-      <span class="pill ${status === 'Active' ? 'pill-design' : 'pill-working'}">${status}</span>
-      ${trade ? `<span style="font-size:12px;color:var(--text-2)">${trade}</span>` : ''}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Contact</div>
-      ${contact ? `<div class="detail-field"><span class="detail-field-label">Contact Person</span><span class="detail-field-val">${contact}</span></div>` : ''}
-      ${phone ? `<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:${phone}" style="color:var(--blue)">${phone}</a></span></div>` : ''}
-      ${email ? `<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:${email}" style="color:var(--blue)">${email}</a></span></div>` : ''}
-      ${location ? `<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">${location}</span></div>` : ''}
-    </div>
-    ${projNames.length ? `<div class="detail-section">
-      <div class="detail-section-title">Projects (${projNames.length})</div>
-      ${projNames.map(n => `<div class="detail-list-item">${n}</div>`).join('')}
-    </div>` : ''}
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
-  `;
+  var html = '<div class="detail-close">' +
+    '<div class="detail-title">' + name + '</div>' +
+    '<button class="detail-close-btn" onclick="closeDetailPanel()">\u2715</button>' +
+  '</div>' +
+  '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">' +
+    '<span style="font-size:18px;color:#E8A000">' + stars + '</span>' +
+    '<span class="pill ' + (status === 'Active' ? 'pill-design' : 'pill-working') + '">' + status + '</span>' +
+    (trade ? '<span style="font-size:12px;color:var(--text-2)">' + trade + '</span>' : '') +
+  '</div>' +
+  '<div class="detail-section">' +
+    '<div class="detail-section-title">Contact</div>' +
+    (contact ? '<div class="detail-field"><span class="detail-field-label">Contact Person</span><span class="detail-field-val">' + contact + '</span></div>' : '') +
+    (phone ? '<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:' + phone + '" style="color:var(--blue)">' + phone + '</a></span></div>' : '') +
+    (email ? '<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:' + email + '" style="color:var(--blue)">' + email + '</a></span></div>' : '') +
+    (location ? '<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">' + location + '</span></div>' : '') +
+  '</div>' +
+  (projNames.length ? '<div class="detail-section"><div class="detail-section-title">Projects (' + projNames.length + ')</div>' + projNames.map(function(n) { return '<div class="detail-list-item">' + n + '</div>'; }).join('') + '</div>' : '') +
+  (notes ? '<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">' + notes + '</div></div>' : '');
+
   showDetailPanel(html);
 }
 
-// ─── DELIVERABLE DETAIL ───
 function openDeliverableDetail(delivId) {
   const deliv = DB.deliverables.find(d => d.id === delivId);
   if (!deliv) return;

@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>EE Studia — Project Insights</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23C8201E'/><text x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-family='Georgia,serif' font-size='28' font-weight='700' fill='white'>EE</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -492,7 +493,7 @@
   .detail-field:last-child { border-bottom: none; }
   .detail-field-label { color: var(--text-2); flex-shrink: 0; }
   .detail-field-val { font-weight: 500; color: var(--text); text-align: right; word-break: break-word; }
-  .detail-img { width: 100%; height: 180px; object-fit: cover; border-radius: var(--radius); margin-bottom: 14px; }
+  .detail-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: var(--radius); margin-bottom: 14px; display:block; }
   .detail-desc { font-size: 12px; color: var(--text-2); line-height: 1.6; margin-top: 6px; }
   .detail-notes { font-size: 12px; color: var(--text-2); line-height: 1.6; padding: 10px 12px; background: var(--surface-2); border-radius: var(--radius); margin-top: 6px; }
   .detail-list-item { font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--text); }
@@ -867,7 +868,7 @@
         <div class="page-title">EE Studia — Vendors & Contractors</div>
         <div class="page-sub">10 vendors linked to Ekemini's personal projects</div>
       </div>
-      <div class="metrics-grid cols3" id="ee-vendor-metrics"></div>
+      <div class="metrics-grid" id="ee-vendor-metrics"></div>
       <div class="chart-card mt16">
         <div class="chart-title">Vendor directory</div>
         <div class="chart-sub" style="margin-bottom:12px">All EE Studia vendors</div>
@@ -988,7 +989,17 @@ async function loadAllData() {
 }
 
 function f(fields, key, fallback = '') {
-  return fields[key] !== undefined && fields[key] !== null ? fields[key] : fallback;
+  const val = fields[key];
+  if (val === undefined || val === null) return fallback;
+  return val;
+}
+
+// Safe getter for select fields (returns .name if object)
+function fsel(fields, key, fallback = '') {
+  const val = fields[key];
+  if (val === undefined || val === null) return fallback;
+  if (typeof val === 'object' && !Array.isArray(val) && val.name) return val.name;
+  return val || fallback;
 }
 
 function naira(n) {
@@ -1069,7 +1080,7 @@ function renderEEOverview() {
   // Stage doughnut
   const stageCounts = {};
   eeProj.forEach(p => {
-    const s = f(p.fields,'Status',{}).name || 'Unknown';
+    const s = fsel(p.fields,'Status','Unknown');
     stageCounts[s] = (stageCounts[s] || 0) + 1;
   });
   const stageLabels = Object.keys(stageCounts);
@@ -1089,7 +1100,7 @@ function renderEEOverview() {
   // Type doughnut
   const typeCounts = {};
   eeProj.forEach(p => {
-    const t = f(p.fields,'Project Type',{}).name || 'Other';
+    const t = fsel(p.fields,'Project Type','') || 'Other';
     typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
   const typeLabels = Object.keys(typeCounts);
@@ -1130,8 +1141,8 @@ function renderEEFinancials() {
 
   const totalInv = eePay.reduce((s, p) => s + f(p.fields, 'Invoice Amount (₦)', 0), 0);
   const totalRecv = eePay.reduce((s, p) => s + f(p.fields, 'Amount Paid (₦)', 0), 0);
-  const overduePay = eePay.filter(p => f(p.fields,'Status',{}).name || '' === 'Overdue');
-  const pendingPay = eePay.filter(p => f(p.fields,'Status',{}).name || '' === 'Pending');
+  const overduePay = eePay.filter(p => (fsel(p.fields,'Status','') || '').toLowerCase().includes('overdue'));
+  const pendingPay = eePay.filter(p => (fsel(p.fields,'Status','') || '').toLowerCase().includes('pending'));
 
   document.getElementById('ee-fin-metrics').innerHTML = [
     { label: 'Total Invoiced', val: naira(totalInv), sub: 'all stages', cls: '' },
@@ -1143,7 +1154,7 @@ function renderEEFinancials() {
   // Revenue locked by stage
   const stageRevenue = {};
   eeProj.forEach(p => {
-    const s = f(p.fields,'Status',{}).name || 'Unknown';
+    const s = fsel(p.fields,'Status','Unknown');
     const cv = f(p.fields, 'Contract Value (₦)', 0);
     stageRevenue[s] = (stageRevenue[s] || 0) + cv;
   });
@@ -1164,22 +1175,27 @@ function renderEEFinancials() {
   payListEl.innerHTML = eePay.map(p => {
     const inv = f(p.fields, 'Invoice Amount (₦)', 0);
     const paid = f(p.fields, 'Amount Paid (₦)', 0);
-    const status = f(p.fields,'Status',{}).name || 'Pending';
+    const status = fsel(p.fields,'Status','Pending');
     const projLinks = f(p.fields, 'Project', []);
-    const projName = projLinks.length ? (projMap[projLinks[0].id] || projLinks[0].name) : 'Unknown';
-    const short = projName.length > 28 ? projName.substring(0, 28) + '…' : projName;
-    const stage = '';
-    const stageStr = f(p.fields, 'Payment Stage', '');
+    const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
+    const projName = projId ? (projMap[projId] || (projLinks[0] && projLinks[0].name) || 'Unknown') : 'Unknown';
+    const short = projName.length > 26 ? projName.substring(0, 26) + '…' : projName;
+    const dueDate = f(p.fields, 'Due Date', '');
+    const payRef = f(p.fields, 'Payment Reference', '');
 
     let pillCls = 'pay-pending';
-    if (status === 'Overdue') pillCls = 'pay-overdue';
-    else if (status === 'Partially Paid') pillCls = 'pay-partial';
-    else if (status === 'Complete payment' || status === 'Paid') pillCls = 'pay-paid';
+    const statusLow = (status || '').toLowerCase();
+    if (statusLow.includes('overdue')) pillCls = 'pay-overdue';
+    else if (statusLow.includes('partial')) pillCls = 'pay-partial';
+    else if (statusLow.includes('complete') || statusLow === 'paid') pillCls = 'pay-paid';
 
-    return `<div class="pay-row">
-      <span class="pay-name">${short}${stageStr ? ' — ' + stageStr : ''}</span>
+    return `<div class="pay-row" style="cursor:pointer" onclick="openPaymentDetail('${p.id}')">
+      <div style="flex:1;min-width:0">
+        <div class="pay-name">${short}</div>
+        <div style="font-size:10px;color:var(--text-3)">${payRef}${dueDate ? ' · Due ' + dueDate : ''}</div>
+      </div>
       <span class="pay-pill ${pillCls}">${status}</span>
-      <span class="pay-amount">${paid > 0 && paid < inv ? naira(paid) + ' / ' + naira(inv) : naira(inv)}</span>
+      <span class="pay-amount">${paid > 0 && paid < inv ? naira(paid) + '/' + naira(inv) : naira(inv)}</span>
     </div>`;
   }).join('');
 
@@ -1195,8 +1211,8 @@ function renderEEProjects() {
   document.getElementById('ee-project-list').innerHTML = eeProj.map((p, i) => {
     const name = f(p.fields, 'Project Name', 'Unnamed');
     const loc = f(p.fields, 'Location', '');
-    const type = f(p.fields,'Project Type',{}).name || '';
-    const status = f(p.fields,'Status',{}).name || '';
+    const type = fsel(p.fields,'Project Type','');
+    const status = fsel(p.fields,'Status','');
     const cv = f(p.fields, 'Contract Value (₦)', 0);
     const pct = Math.round(f(p.fields, 'Completion (%)', 0) * 100);
     const color = dotColors[i % dotColors.length];
@@ -1253,9 +1269,9 @@ function renderEETasks() {
     return linkedToEEProj || assignedToEkemini;
   });
 
-  const urgent = eeTasks.filter(t => ((f(t.fields,'Priority',{}) || {}).name || '') === 'Urgent');
-  const inProg = eeTasks.filter(t => ((f(t.fields,'Status',{}) || {}).name || '') === 'In Progress');
-  const toDo = eeTasks.filter(t => ((f(t.fields,'Status',{}) || {}).name || '') === 'To Do');
+  const urgent = eeTasks.filter(t => (fsel(t.fields,'Priority','')) === 'Urgent');
+  const inProg = eeTasks.filter(t => (fsel(t.fields,'Status','')) === 'In Progress');
+  const toDo = eeTasks.filter(t => (fsel(t.fields,'Status','')) === 'To Do');
 
   document.getElementById('badge-urgent-tasks').textContent = urgent.length || '0';
 
@@ -1276,7 +1292,7 @@ function renderEETasks() {
 
   function renderSingleTask(t) {
     const name = f(t.fields,'Task Name','Unnamed task');
-    const pri = (f(t.fields,'Priority',{}) || {}).name || 'Medium';
+    const pri = fsel(t.fields,'Priority','Medium');
     const due = f(t.fields,'Due Date','');
     const projName = getTaskProjName(t);
     const dotColor = dotMap[pri] || '#888';
@@ -1299,14 +1315,14 @@ function renderEETasks() {
     eeTasks.forEach(t => {
       const key = groupBy === 'project'
         ? getTaskProjName(t)
-        : ((f(t.fields,'Status',{}) || {}).name || 'No Status');
+        : fsel(t.fields,'Status','No Status');
       if (!groups[key]) groups[key] = [];
       groups[key].push(t);
     });
     return Object.keys(groups).sort().map(key => {
       const tasks = groups[key].sort((a,b) => {
-        const pa = priorityOrder[(f(a.fields,'Priority',{}).name || 'Low')] ?? 3;
-        const pb = priorityOrder[(f(b.fields,'Priority',{}).name || 'Low')] ?? 3;
+        const pa = priorityOrder[fsel(a.fields,'Priority','Low')] ?? 3;
+        const pb = priorityOrder[fsel(b.fields,'Priority','Low')] ?? 3;
         return pa - pb;
       });
       return `<div style="margin-bottom:16px">
@@ -1338,7 +1354,7 @@ function renderEETasks() {
   // Category chart
   const catCounts = {};
   eeTasks.forEach(t => {
-    const c = f(t.fields,'Category',{}).name || 'Other';
+    const c = fsel(t.fields,'Category','Other');
     catCounts[c] = (catCounts[c] || 0) + 1;
   });
   const catLabels = Object.keys(catCounts);
@@ -1368,7 +1384,7 @@ function renderEEClients() {
   // Lead source chart
   const leadCounts = {};
   eeClients.forEach(c => {
-    const s = f(c.fields,'Lead Source',{}).name || 'Unknown';
+    const s = fsel(c.fields,'Lead Source','Unknown');
     leadCounts[s] = (leadCounts[s] || 0) + 1;
   });
   const leadLabels = Object.keys(leadCounts);
@@ -1387,7 +1403,7 @@ function renderEEClients() {
   // Client type chart
   const typeCounts = {};
   eeClients.forEach(c => {
-    const t = f(c.fields,'Client Type',{}).name || 'Unknown';
+    const t = fsel(c.fields,'Client Type','Unknown');
     typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
   const ctLabels = Object.keys(typeCounts);
@@ -1405,20 +1421,30 @@ function renderEEClients() {
 
   document.getElementById('ee-client-list').innerHTML = eeClients.map(c => {
     const name = f(c.fields, 'Client Name', 'Unknown');
-    const type = f(c.fields,'Client Type',{}).name || '';
-    const source = f(c.fields,'Lead Source',{}).name || '';
+    const type = fsel(c.fields,'Client Type','');
+    const source = fsel(c.fields,'Lead Source','');
     const projLinks = f(c.fields, 'Projects', []);
     const projName = projLinks.length ? (projLinks[0].name || '').split('—')[0].trim() : '';
     const email = f(c.fields, 'Email', '');
     const phone = f(c.fields, 'Phone', '');
-    return `<div class="client-row" style="cursor:pointer" onclick="openClientDetail('${c.id}')">
-      <div class="client-av">${initials(name)}</div>
-      <div class="client-info">
-        <div class="client-name">${name}</div>
-        <div class="client-type">${projName} · ${type}</div>
+    const email = f(c.fields, 'Email', '');
+    const phone = f(c.fields, 'Phone', '');
+    const location = f(c.fields, 'Location', '');
+    return `<div class="client-row" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:6px" onclick="openClientDetail('${c.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="client-av">${initials(name)}</div>
+        <div class="client-info">
+          <div class="client-name">${name}</div>
+          <div class="client-type">${projName} · ${type}</div>
+        </div>
+        <span class="source-pill">${source}</span>
+        <span style="color:var(--text-3);font-size:16px;flex-shrink:0">›</span>
       </div>
-      <span class="source-pill">${source}</span>
-      <span style="color:var(--text-3);font-size:16px">›</span>
+      <div style="display:flex;gap:12px;padding-left:42px;flex-wrap:wrap">
+        ${email ? '<a href="mailto:' + email + '" onclick="event.stopPropagation()" style="font-size:10.5px;color:var(--blue);text-decoration:none">' + email + '</a>' : ''}
+        ${phone ? '<a href="tel:' + phone + '" onclick="event.stopPropagation()" style="font-size:10.5px;color:var(--text-2);text-decoration:none">' + phone + '</a>' : ''}
+        ${location ? '<span style="font-size:10.5px;color:var(--text-3)">' + location + '</span>' : ''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -1436,7 +1462,7 @@ function renderEEDeliverables() {
 
   const statusCounts = { Approved: 0, 'In Progress': 0, 'Under Review': 0, 'Issued to Client': 0, 'Not Started': 0, 'Revision Required': 0 };
   eeDeliv.forEach(d => {
-    const s = f(d.fields,'Status',{}).name || 'Not Started';
+    const s = fsel(d.fields,'Status','Not Started');
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
 
@@ -1449,7 +1475,7 @@ function renderEEDeliverables() {
 
   const typeCounts = {};
   eeDeliv.forEach(d => {
-    const t = f(d.fields,'Deliverable Type',{}).name || 'Other';
+    const t = fsel(d.fields,'Deliverable Type','Other');
     typeCounts[t] = (typeCounts[t] || 0) + 1;
   });
   const tLabels = Object.keys(typeCounts);
@@ -1484,11 +1510,12 @@ function renderEEDeliverables() {
     delivListEl.innerHTML = eeDeliv.map(d => {
       const title = d.fields['Deliverable Title'] || 'Untitled';
       const type = (d.fields['Deliverable Type'] || {}).name || '';
-      const status = (d.fields['Status'] || {}).name || '';
-      const attachments = d.fields['Attachments'] || d.fields['File'] || d.fields['Drawing File'] || [];
+      const status = fsel(d.fields,'Status','');
+      const attachments = d.fields['File'] || [];
+      const docLink = d.fields['Link to Document'] || '';
       const hasFile = attachments.length > 0;
       let statusCls = 'pill-working';
-      if (status === 'Approved' || status === 'Issued to Client') statusCls = 'pill-design';
+      if (status === 'Approved' || status === 'Issued to Client') statusCls = 'pill-design'; // fixed
       if (status === 'Revision Required') statusCls = 'pill-construction';
       return `<div class="project-row" style="cursor:pointer" onclick="openDeliverableDetail('${d.id}')">
         <div class="project-info">
@@ -1528,7 +1555,7 @@ function renderEEInspections() {
     const date = f(i.fields, 'Visit Date', '');
     const contractor = f(i.fields, 'Contractor on Site', '');
     const defect = f(i.fields, 'Issues / Defects Found', false);
-    const stage = f(i.fields,'Work Stage',{}).name || '';
+    const stage = fsel(i.fields,'Work Stage','');
     return `<div class="insp-row">
       <div style="flex:1">
         <div style="font-size:12px;font-weight:500">${ref}</div>
@@ -1550,21 +1577,24 @@ function renderEEVendors() {
     });
   });
 
-  const active = eeVendors.filter(v => ((f(v.fields,'Status',{}) || {}).name || '') === 'Active').length;
-  const vetting = eeVendors.filter(v => ((f(v.fields,'Status',{}) || {}).name || '') === 'Vetting').length;
+  const active = eeVendors.filter(v => (fsel(v.fields,'Status','')) === 'Active').length;
+  const vetting = eeVendors.filter(v => (fsel(v.fields,'Status','')) === 'Vetting').length;
 
+  const avgRating = eeVendors.length ? (eeVendors.reduce((s,v) => s + f(v.fields,'Rating',0), 0) / eeVendors.length).toFixed(1) : 0;
+  const tradeTypes = new Set(eeVendors.map(v => fsel(v.fields,'Trade / Specialty',''))).size;
   document.getElementById('ee-vendor-metrics').innerHTML = [
     { label: 'Total Vendors', val: eeVendors.length, cls: '' },
     { label: 'Active', val: active, cls: 'metric-green' },
-    { label: 'Under Vetting', val: vetting, cls: 'metric-amber' }
+    { label: 'Trade Types', val: tradeTypes, cls: '' },
+    { label: 'Avg Rating', val: avgRating + ' ★', cls: 'metric-amber' }
   ].map(m => `<div class="metric-card"><div class="metric-label">${m.label}</div><div class="metric-value ${m.cls}">${m.val}</div></div>`).join('');
 
   document.getElementById('ee-vendor-list').innerHTML = eeVendors.map(v => {
     const name = f(v.fields, 'Vendor / Contractor Name', 'Unknown');
-    const trade = f(v.fields,'Trade / Specialty',{}).name || '';
+    const trade = fsel(v.fields,'Trade / Specialty','') || '';
     const contact = f(v.fields, 'Contact Person', '');
     const rating = f(v.fields, 'Rating', 0);
-    const status = f(v.fields,'Status',{}).name || '';
+    const status = fsel(v.fields,'Status','') || '';
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
     return `<div class="vendor-row">
       <div class="vendor-av">${initials(name)}</div>
@@ -1600,7 +1630,7 @@ function renderIWOverview() {
 
   const stageCounts = {};
   iwProj.forEach(p => {
-    const s = f(p.fields,'Status',{}).name || 'Unknown';
+    const s = fsel(p.fields,'Status','Unknown');
     stageCounts[s] = (stageCounts[s] || 0) + 1;
   });
   const sL = Object.keys(stageCounts);
@@ -1634,8 +1664,8 @@ function renderIWProjects() {
   document.getElementById('iw-project-list').innerHTML = iwProj.map((p, i) => {
     const name = f(p.fields,'Project Name','Unnamed');
     const loc = f(p.fields,'Location','');
-    const type = f(p.fields,'Project Type',{}).name || '';
-    const status = f(p.fields,'Status',{}).name || '';
+    const type = fsel(p.fields,'Project Type','');
+    const status = fsel(p.fields,'Status','');
     const cv = f(p.fields,'Contract Value (₦)',0);
     const pct = Math.round(f(p.fields,'Completion (%)',0)*100);
     return `<div class="project-row" style="cursor:pointer" onclick="openProjectDetail('${p.id}')">
@@ -1668,7 +1698,7 @@ function renderIWFinancial() {
 
   const totalInv = iwPay.reduce((s,p) => s + f(p.fields,'Invoice Amount (₦)',0), 0);
   const totalRecv = iwPay.reduce((s,p) => s + f(p.fields,'Amount Paid (₦)',0), 0);
-  const overdue = iwPay.filter(p => f(p.fields,'Status',{}).name || '' === 'Overdue');
+  const overdue = iwPay.filter(p => (fsel(p.fields,'Status','') || '').toLowerCase().includes('overdue'));
 
   document.getElementById('iw-fin-metrics').innerHTML = [
     { label: 'Total Invoiced', val: naira(totalInv), cls: '' },
@@ -1736,10 +1766,10 @@ function renderIWSites() {
     const date = f(i.fields,'Visit Date','');
     const contractor = f(i.fields,'Contractor on Site','');
     const defect = f(i.fields,'Issues / Defects Found',false);
-    const stage = (f(i.fields,'Work Stage',{}) || {}).name || '';
-    const photos = f(i.fields,'Photos',[]);
+    const stage = fsel(i.fields,'Work Stage','');
+    const photos = f(i.fields,'Attachments',[]);
     const photoHtml = photos.length ? `<img src="${photos[0].thumbnails && photos[0].thumbnails.large ? photos[0].thumbnails.large.url : photos[0].url}"
-      style="width:100%;height:140px;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer"
+      style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;margin-top:8px;cursor:pointer;display:block"
       onclick="openImageLightbox('${photos[0].url}')" onerror="this.style.display='none'"/>` : '';
     return `<div class="insp-row" style="flex-direction:column;align-items:stretch;cursor:pointer" onclick="openInspectionDetail('${i.id}')">
       <div style="display:flex;align-items:center;gap:8px">
@@ -1768,10 +1798,10 @@ function renderIWVendors() {
 
   document.getElementById('iw-vendor-list').innerHTML = iwVendors.map(v => {
     const name = f(v.fields,'Vendor / Contractor Name','Unknown');
-    const trade = f(v.fields,'Trade / Specialty',{}).name || '';
+    const trade = fsel(v.fields,'Trade / Specialty','') || '';
     const contact = f(v.fields,'Contact Person','');
     const rating = f(v.fields,'Rating',0);
-    const status = f(v.fields,'Status',{}).name || '';
+    const status = fsel(v.fields,'Status','') || '';
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
     return `<div class="vendor-row">
       <div class="vendor-av">${initials(name)}</div>
@@ -1850,7 +1880,7 @@ function openProjectDetail(projectId) {
   const f2 = (key, fb = '') => proj.fields[key] !== undefined && proj.fields[key] !== null ? proj.fields[key] : fb;
 
   const name = f2('Project Name', 'Unnamed');
-  const status = f2('Status', '');
+  const status = fsel(proj.fields,'Status','');
   const type = f2('Project Type', '');
   const loc = f2('Location', '');
   const state = f2('State', '');
@@ -1950,6 +1980,53 @@ function openProjectDetail(projectId) {
 // closeProjectDetail replaced by closeDetailPanel
 
 
+
+// ─── PAYMENT DETAIL ───
+function openPaymentDetail(payId) {
+  const pay = DB.payments.find(p => p.id === payId);
+  if (!pay) return;
+  const ref = pay.fields['Payment Reference'] || '';
+  const inv = pay.fields['Invoice Amount (₦)'] || 0;
+  const paid = pay.fields['Amount Paid (₦)'] || 0;
+  const outstanding = pay.fields['Outstanding Balance (₦)'] || (inv - paid);
+  const status = fsel(pay.fields,'Status','');
+  const method = fsel(pay.fields,'Payment Method','');
+  const invDate = pay.fields['Invoice Date'] || '';
+  const dueDate = pay.fields['Due Date'] || '';
+  const dateRecv = pay.fields['Date Received'] || '';
+  const notes = pay.fields['Notes'] || '';
+  const projLinks = pay.fields['Project'] || [];
+  const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
+  const proj = projId ? DB.projects.find(p => p.id === projId) : null;
+  const projName = proj ? proj.fields['Project Name'] || '' : '';
+
+  let statusCls = 'pay-pending'; const sl = (status||'').toLowerCase();
+  if (sl.includes('overdue')) statusCls = 'pay-overdue';
+  else if (sl.includes('partial')) statusCls = 'pay-partial';
+  else if (sl.includes('complete') || sl === 'paid') statusCls = 'pay-paid';
+
+  const html = `
+    <div class="detail-close">
+      <div class="detail-title">${ref || 'Payment Record'}</div>
+      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
+    </div>
+    <span class="pay-pill ${statusCls}" style="display:inline-block;margin-bottom:16px;font-size:11px;padding:4px 12px">${status}</span>
+    <div class="detail-section">
+      <div class="detail-section-title">Payment Details</div>
+      ${projName ? `<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">${projName.split('—')[0].trim()}</span></div>` : ''}
+      <div class="detail-field"><span class="detail-field-label">Invoice Amount</span><span class="detail-field-val" style="font-size:16px;font-family:'Syne',sans-serif;font-weight:600">${naira(inv)}</span></div>
+      <div class="detail-field"><span class="detail-field-label">Amount Paid</span><span class="detail-field-val" style="color:var(--green);font-weight:600">${naira(paid)}</span></div>
+      <div class="detail-field"><span class="detail-field-label">Outstanding</span><span class="detail-field-val" style="color:${outstanding > 0 ? 'var(--red)' : 'var(--green)'};font-weight:600">${naira(outstanding)}</span></div>
+      ${method ? `<div class="detail-field"><span class="detail-field-label">Payment Method</span><span class="detail-field-val">${method}</span></div>` : ''}
+      ${invDate ? `<div class="detail-field"><span class="detail-field-label">Invoice Date</span><span class="detail-field-val">${invDate}</span></div>` : ''}
+      ${dueDate ? `<div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-val">${dueDate}</span></div>` : ''}
+      ${dateRecv ? `<div class="detail-field"><span class="detail-field-label">Date Received</span><span class="detail-field-val">${dateRecv}</span></div>` : ''}
+    </div>
+    ${notes ? `<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
+  `;
+  showDetailPanel(html);
+}
+
 // ─── IMAGE LIGHTBOX ───
 function openImageLightbox(url) {
   const overlay = document.createElement('div');
@@ -2009,20 +2086,24 @@ function openInspectionDetail(inspId) {
   if (!insp) return;
   const ref = insp.fields['Inspection Reference'] || 'Unnamed';
   const date = insp.fields['Visit Date'] || '';
-  const scheduled = insp.fields['fld72i6cUbAG9KYz8'] || '';
+  const scheduled = insp.fields['Next Visit Date'] || '';
   const contractor = insp.fields['Contractor on Site'] || '';
   const defect = insp.fields['Issues / Defects Found'] || false;
   const stage = (insp.fields['Work Stage'] || {}).name || '';
-  const type = (insp.fields['fldp1jPoiTnPNNlj8'] || {}).name || '';
-  const notes = insp.fields['fldKOFYa7a5Ef5fad'] || '';
-  const action = insp.fields['fldkFjBDllluXMSMj'] || '';
-  const photos = insp.fields['Photos'] || [];
+  const type = fsel(insp.fields,'Visit Type','') || (insp.fields['Visit Type'] && insp.fields['Visit Type'].name) || '';
+  const notes = insp.fields['Observations'] || '';
+  const action = insp.fields['Action Required'] || '';
+  const photos = insp.fields['Attachments'] || [];
 
-  const photosHtml = photos.map(p => `
-    <img src="${p.thumbnails?.large?.url || p.url}" 
-      style="width:100%;height:180px;object-fit:cover;border-radius:8px;margin-bottom:8px;cursor:pointer" 
-      onclick="openImageLightbox('${p.url}')" onerror="this.style.display='none'"/>
-  `).join('');
+  const photosHtml = photos.map(p => {
+    const thumbUrl = (p.thumbnails && p.thumbnails.large && p.thumbnails.large.url) ? p.thumbnails.large.url : p.url;
+    return `<div style="margin-bottom:10px">
+      <img src="${thumbUrl}" 
+        style="width:100%;border-radius:8px;cursor:pointer;display:block;object-fit:cover;max-height:260px" 
+        onclick="openImageLightbox('${p.url}')" onerror="this.style.display='none'"/>
+      <div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">Click to enlarge</div>
+    </div>`;
+  }).join('');
 
   const html = `
     <div class="detail-close">
@@ -2092,16 +2173,17 @@ function openDeliverableDetail(delivId) {
   const deliv = DB.deliverables.find(d => d.id === delivId);
   if (!deliv) return;
   const title = deliv.fields['Deliverable Title'] || 'Untitled';
-  const type = (deliv.fields['Deliverable Type'] || {}).name || '';
-  const status = (deliv.fields['Status'] || {}).name || '';
+  const type = fsel(deliv.fields,'Deliverable Type','');
+  const status = fsel(deliv.fields,'Status','');
   const projLinks = deliv.fields['Project'] || [];
   const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
   const proj = projId ? DB.projects.find(p => p.id === projId) : null;
   const projName = proj ? proj.fields['Project Name'] || '' : '';
-  const attachments = deliv.fields['Attachments'] || deliv.fields['File'] || deliv.fields['Drawing File'] || [];
+  const attachments = deliv.fields['File'] || [];
+  const docLink = deliv.fields['Link to Document'] || '';
 
   let statusCls = 'pill-working';
-  if (status === 'Approved' || status === 'Issued to Client') statusCls = 'pill-design';
+  if (status === 'Approved' || status === 'Issued to Client') statusCls = 'pill-design'; // fixed
   if (status === 'Revision Required') statusCls = 'pill-construction';
 
   const filesHtml = attachments.map(att => {
@@ -2130,8 +2212,8 @@ function openDeliverableDetail(delivId) {
       <div class="detail-section-title">Details</div>
       ${projName ? `<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">${projName.split('—')[0].trim()}</span></div>` : ''}
     </div>
-    ${attachments.length ? `<div class="detail-section">
-      <div class="detail-section-title">Files & Attachments (${attachments.length})</div>
+    ${(attachments.length || docLink) ? `<div class="detail-section">
+      <div class="detail-section-title">Files & Attachments</div>
       ${filesHtml}
     </div>` : '<div class="detail-section"><div class="detail-notes">No files attached to this deliverable.</div></div>'}
   `;

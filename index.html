@@ -985,7 +985,6 @@ const TABLES = {
 let DB = {};
 let chartInstances = {};
 
-const CACHE_KEY = 'ee_studia_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function fetchTable(tableId) {
@@ -1004,7 +1003,7 @@ async function fetchTable(tableId) {
 async function loadAllData() {
   // Try cache first
   try {
-    var cached = sessionStorage.getItem(CACHE_KEY);
+    var cached = sessionStorage.getItem('ee_studia_cache');
     if (cached) {
       var parsed = JSON.parse(cached);
       if (parsed && parsed.ts && (Date.now() - parsed.ts) < CACHE_TTL && parsed.data) {
@@ -1031,7 +1030,7 @@ async function loadAllData() {
 
   // Save to cache
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: DB }));
+    sessionStorage.setItem('ee_studia_cache', JSON.stringify({ ts: Date.now(), data: DB }));
   } catch(e) {}
 }
 
@@ -1872,6 +1871,35 @@ function renderIWVendors() {
   }).join('');
 }
 
+// ─── DARK MODE ───
+function toggleDark() {
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    document.getElementById('darkBtn').textContent = 'Dark mode';
+    try { localStorage.setItem('ee_theme','light'); } catch(e) {}
+  } else {
+    document.documentElement.setAttribute('data-theme','dark');
+    document.getElementById('darkBtn').textContent = 'Light mode';
+    try { localStorage.setItem('ee_theme','dark'); } catch(e) {}
+  }
+}
+(function(){
+  try { if(localStorage.getItem('ee_theme')==='dark') document.documentElement.setAttribute('data-theme','dark'); } catch(e) {}
+})();
+
+// ─── FILTER UTILITIES ───
+function filterGallery(query, gridId) {
+  var q=(query||'').toLowerCase().trim(), grid=document.getElementById(gridId);
+  if(!grid) return;
+  grid.querySelectorAll('[data-search]').forEach(function(c){ c.style.display=(!q||c.dataset.search.indexOf(q)!==-1)?'':'none'; });
+}
+function filterList(query, listId) {
+  var q=(query||'').toLowerCase().trim(), list=document.getElementById(listId);
+  if(!list) return;
+  list.querySelectorAll('[data-search]').forEach(function(r){ r.style.display=(!q||r.dataset.search.indexOf(q)!==-1)?'':'none'; });
+}
+
 // ─── VIEW ROUTING ───
 const renderFns = {
   'ee-overview': renderEEOverview,
@@ -1892,419 +1920,111 @@ const renderFns = {
 const rendered = new Set();
 
 function switchView(viewId) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-  const viewEl = document.getElementById('view-' + viewId);
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  var viewEl = document.getElementById('view-' + viewId);
   if (viewEl) viewEl.classList.add('active');
-
-  const navEl = document.querySelector(`[data-view="${viewId}"]`);
+  var navEl = document.querySelector('[data-view="' + viewId + '"]');
   if (navEl) navEl.classList.add('active');
-
   if (!rendered.has(viewId) && renderFns[viewId]) {
     renderFns[viewId]();
     rendered.add(viewId);
   }
 }
 
-// ─── MOBILE SIDEBAR TOGGLE ───
+// ─── MOBILE SIDEBAR ───
 function toggleSidebar() {
-  const sidebar = document.getElementById('mainSidebar');
-  const overlay = document.getElementById('sidebarOverlay');
+  var sidebar = document.getElementById('mainSidebar');
+  var overlay = document.getElementById('sidebarOverlay');
   sidebar.classList.toggle('open');
   overlay.classList.toggle('open');
 }
-
 function closeSidebar() {
   document.getElementById('mainSidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('open');
 }
 
 // ─── NAV CLICK HANDLER ───
-document.querySelectorAll('.nav-item[data-view]').forEach(item => {
-  item.addEventListener('click', () => {
+document.querySelectorAll('.nav-item[data-view]').forEach(function(item) {
+  item.addEventListener('click', function() {
     switchView(item.dataset.view);
     closeSidebar();
     window.scrollTo(0, 0);
-    document.getElementById('mainContent').scrollTop = 0;
-    // Update mobile header title
-    const titleEl = document.getElementById('mobileTitle');
+    var mc = document.getElementById('mainContent');
+    if (mc) mc.scrollTop = 0;
+    var titleEl = document.getElementById('mobileTitle');
     if (titleEl) titleEl.textContent = item.textContent.trim().replace(/[0-9—]/g, '').trim();
   });
 });
 
 
-// ─── PROJECT DETAIL ───
-function openProjectDetail(projectId) {
-  const proj = DB.projects.find(p => p.id === projectId);
-  if (!proj) return;
-  const f2 = (key, fb = '') => proj.fields[key] !== undefined && proj.fields[key] !== null ? proj.fields[key] : fb;
+// ─── INIT ───
+async function init() {
+  try {
+    var bar = document.getElementById('loadingBar');
+    var txt = document.getElementById('loadingText');
 
-  const name = f2('Project Name', 'Unnamed');
-  const status = fsel(proj.fields,'Status','');
-  const type = f2('Project Type', '');
-  const loc = f2('Location', '');
-  const state = f2('State', '');
-  const cv = f2('Contract Value (₦)', 0);
-  const recv = f2('Total Received ( ₦ )', 0);
-  const pct = Math.round(f2('Completion (%)', 0) * 100);
-  const start = f2('Start Date', '');
-  const end = f2('Expected Completion', '');
-  const desc = f2('Project Description', '');
-  const notes = f2('Notes', '');
-  const image = f2('Image', []);
-  const clientLinks = f2('Client', []);
-  const delivLinks = f2('Design Deliverables', []);
-  const taskLinks = f2('Tasks', []);
-  const inspLinks = f2('Site Inspections', []);
+    try {
+      var cached = sessionStorage.getItem('ee_studia_cache');
+      if (cached) {
+        var p = JSON.parse(cached);
+        var age = Math.round((Date.now() - p.ts) / 1000);
+        if (age < 300 && p.data) {
+          DB = p.data;
+          if (txt) txt.textContent = 'Loading from cache...';
+          if (bar) bar.style.width = '100%';
+          await new Promise(function(r) { setTimeout(r, 150); });
+          document.getElementById('loadingScreen').style.display = 'none';
+          document.getElementById('appShell').style.display = 'flex';
+          var now = new Date();
+          document.getElementById('last-updated').textContent = 'Cached · ' + now.toLocaleTimeString('en-NG', {hour:'2-digit',minute:'2-digit'});
+          renderFns['ee-overview']();
+          rendered.add('ee-overview');
+          // Restore dark btn label
+          if (document.documentElement.getAttribute('data-theme') === 'dark') {
+            var btn = document.getElementById('darkBtn');
+            if (btn) btn.textContent = 'Light mode';
+          }
+          return;
+        }
+      }
+    } catch(e) {}
 
-  // Find client name
-  const clientId = typeof clientLinks[0] === 'string' ? clientLinks[0] : (clientLinks[0] && clientLinks[0].id);
-  const client = clientId ? DB.clients.find(c => c.id === clientId) : null;
-  const clientName = client ? client.fields['Client Name'] || '' : '';
+    if (bar) bar.style.width = '20%';
+    await loadAllData();
+    if (bar) bar.style.width = '100%';
 
-  // Find deliverables
-  const delivIds = new Set(delivLinks.map(l => typeof l === 'string' ? l : (l && l.id)));
-  const delivs = DB.deliverables.filter(d => delivIds.has(d.id));
+    try { sessionStorage.setItem('ee_studia_cache', JSON.stringify({ts: Date.now(), data: DB})); } catch(e) {}
 
-  // Find tasks
-  const taskIds = new Set(taskLinks.map(l => typeof l === 'string' ? l : (l && l.id)));
-  const tasks = DB.tasks.filter(t => taskIds.has(t.id));
+    await new Promise(function(r) { setTimeout(r, 200); });
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
 
-  // Find inspections
-  const inspIds = new Set(inspLinks.map(l => typeof l === 'string' ? l : (l && l.id)));
-  const insps = DB.inspections.filter(i => inspIds.has(i.id));
+    var now = new Date();
+    document.getElementById('last-updated').textContent = 'Updated ' + now.toLocaleTimeString('en-NG', {hour:'2-digit',minute:'2-digit'});
 
-  const imgHtml = image.length ? `<img src="${image[0].url}" class="detail-img" onerror="this.style.display=&quot;none&quot;"/>` : '';
+    // Restore dark btn label
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      var btn = document.getElementById('darkBtn');
+      if (btn) btn.textContent = 'Light mode';
+    }
 
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${name}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    ${imgHtml}
-    <span class="pill ${pillClass(status)}" style="margin-bottom:12px;display:inline-block">${status}</span>
+    renderFns['ee-overview']();
+    rendered.add('ee-overview');
 
-    <div class="detail-section">
-      <div class="detail-section-title">Project Details</div>
-      <div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-val">${type}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">${loc}, ${state}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-val">${clientName}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Contract Value</span><span class="detail-field-val">${naira(cv)}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Total Received</span><span class="detail-field-val" style="color:var(--green)">${naira(recv)}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Completion</span><span class="detail-field-val">${pct}%</span></div>
-      <div class="detail-field"><span class="detail-field-label">Start Date</span><span class="detail-field-val">${start}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Expected Completion</span><span class="detail-field-val">${end}</span></div>
-    </div>
-
-    ${desc ? `<div class="detail-section"><div class="detail-section-title">Description</div><div class="detail-desc">${desc}</div></div>` : ''}
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
-
-    ${delivs.length ? `<div class="detail-section">
-      <div class="detail-section-title">Design Deliverables (${delivs.length})</div>
-      ${delivs.map(d => `<div class="detail-list-item" style="display:flex;justify-content:space-between">
-        <span>${d.fields['Deliverable Title'] || ''}</span>
-        <span class="pill ${d.fields['Status'] === 'Approved' ? 'pill-design' : d.fields['Status'] === 'Issued to Client' ? 'pill-completed' : 'pill-working'}" style="font-size:9px">${d.fields['Status'] || ''}</span>
-      </div>`).join('')}
-    </div>` : ''}
-
-    ${tasks.length ? `<div class="detail-section">
-      <div class="detail-section-title">Tasks (${tasks.length})</div>
-      ${tasks.map(t => `<div class="detail-list-item" style="display:flex;justify-content:space-between">
-        <span>${t.fields['Task Name'] || ''}</span>
-        <span style="font-size:11px;color:var(--text-3)">${t.fields['Status'] || ''}</span>
-      </div>`).join('')}
-    </div>` : ''}
-
-    ${insps.length ? `<div class="detail-section">
-      <div class="detail-section-title">Site Inspections (${insps.length})</div>
-      ${insps.map(i => `<div class="detail-list-item" style="display:flex;justify-content:space-between">
-        <span>${i.fields['Inspection Reference'] || ''}</span>
-        <span class="${i.fields['Issues / Defects Found'] ? 'defect-yes' : 'defect-no'}">${i.fields['Issues / Defects Found'] ? 'Defect' : 'Clear'}</span>
-      </div>`).join('')}
-    </div>` : ''}
-  `;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'detail-overlay';
-  overlay.id = 'projectDetailOverlay';
-  overlay.onclick = (e) => { if (e.target === overlay) closeProjectDetail(); };
-
-  const panel = document.createElement('div');
-  panel.className = 'detail-panel';
-  panel.innerHTML = html;
-
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('loadingScreen').innerHTML =
+      '<div style="text-align:center;padding:40px;font-family:sans-serif">' +
+      '<div style="font-size:32px;margin-bottom:12px">&#9888;</div>' +
+      '<div style="font-size:14px;color:#666">Failed to load. Check your connection.</div>' +
+      '<div style="font-size:11px;color:#999;margin-top:8px">' + err.message + '</div>' +
+      '<button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#C8201E;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">Retry</button>' +
+      '</div>';
+  }
 }
 
-// closeProjectDetail replaced by closeDetailPanel
-
-
-
-// ─── PAYMENT DETAIL ───
-function openPaymentDetail(payId) {
-  const pay = DB.payments.find(p => p.id === payId);
-  if (!pay) return;
-  const ref = pay.fields['Payment Reference'] || '';
-  const inv = pay.fields['Invoice Amount (₦)'] || 0;
-  const paid = pay.fields['Amount Paid (₦)'] || 0;
-  const outstanding = pay.fields['Outstanding Balance (₦)'] || (inv - paid);
-  const status = fsel(pay.fields,'Status','');
-  const method = fsel(pay.fields,'Payment Method','');
-  const invDate = pay.fields['Invoice Date'] || '';
-  const dueDate = pay.fields['Due Date'] || '';
-  const dateRecv = pay.fields['Date Received'] || '';
-  const notes = pay.fields['Notes'] || '';
-  const projLinks = pay.fields['Project'] || [];
-  const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
-  const proj = projId ? DB.projects.find(p => p.id === projId) : null;
-  const projName = proj ? proj.fields['Project Name'] || '' : '';
-
-  let statusCls = 'pay-pending'; const sl = (status||'').toLowerCase();
-  if (sl.includes('overdue')) statusCls = 'pay-overdue';
-  else if (sl.includes('partial')) statusCls = 'pay-partial';
-  else if (sl.includes('complete') || sl === 'paid') statusCls = 'pay-paid';
-
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${ref || 'Payment Record'}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <span class="pay-pill ${statusCls}" style="display:inline-block;margin-bottom:16px;font-size:11px;padding:4px 12px">${status}</span>
-    <div class="detail-section">
-      <div class="detail-section-title">Payment Details</div>
-      ${projName ? `<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">${projName.split('—')[0].trim()}</span></div>` : ''}
-      <div class="detail-field"><span class="detail-field-label">Invoice Amount</span><span class="detail-field-val" style="font-size:16px;font-family:'Syne',sans-serif;font-weight:600">${naira(inv)}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Amount Paid</span><span class="detail-field-val" style="color:var(--green);font-weight:600">${naira(paid)}</span></div>
-      <div class="detail-field"><span class="detail-field-label">Outstanding</span><span class="detail-field-val" style="color:${outstanding > 0 ? 'var(--red)' : 'var(--green)'};font-weight:600">${naira(outstanding)}</span></div>
-      ${method ? `<div class="detail-field"><span class="detail-field-label">Payment Method</span><span class="detail-field-val">${method}</span></div>` : ''}
-      ${invDate ? `<div class="detail-field"><span class="detail-field-label">Invoice Date</span><span class="detail-field-val">${invDate}</span></div>` : ''}
-      ${dueDate ? `<div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-val">${dueDate}</span></div>` : ''}
-      ${dateRecv ? `<div class="detail-field"><span class="detail-field-label">Date Received</span><span class="detail-field-val">${dateRecv}</span></div>` : ''}
-    </div>
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
-  `;
-  showDetailPanel(html);
-}
-
-// ─── IMAGE LIGHTBOX ───
-function openImageLightbox(url) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
-  overlay.onclick = () => overlay.remove();
-  const img = document.createElement('img');
-  img.src = url;
-  img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px';
-  overlay.appendChild(img);
-  document.body.appendChild(overlay);
-}
-
-// ─── TASK DETAIL ───
-function openTaskDetail(taskId) {
-  const task = DB.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  const name = task.fields['Task Name'] || 'Unnamed';
-  const pri = (task.fields['Priority'] || {}).name || '';
-  const status = (task.fields['Status'] || {}).name || '';
-  const category = (task.fields['Category'] || {}).name || '';
-  const due = task.fields['Due Date'] || '';
-  const notes = task.fields['fldQhf6KxCr1ZkPdB'] || task.fields['Notes'] || task.fields['Description'] || '';
-  const projLinks = task.fields['Project'] || [];
-  const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
-  const proj = projId ? DB.projects.find(p => p.id === projId) : null;
-  const projName = proj ? proj.fields['Project Name'] || '' : '';
-  const assignedTo = task.fields['Assigned To'] || [];
-  const assignedNames = assignedTo.map(a => a.name || '').filter(Boolean).join(', ');
-
-  const dotMap = { 'Urgent': '#C8201E', 'High': '#B8610A', 'Medium': '#1A5FA8', 'Low': '#888780' };
-  const dotColor = dotMap[pri] || '#888';
-
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${name}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:${dotColor}20;color:${dotColor};font-weight:500">${pri}</span>
-      <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">${status}</span>
-      ${category ? `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">${category}</span>` : ''}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Details</div>
-      ${projName ? `<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">${projName.split('—')[0].trim()}</span></div>` : ''}
-      ${due ? `<div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-val">${due}</span></div>` : ''}
-      ${assignedNames ? `<div class="detail-field"><span class="detail-field-label">Assigned To</span><span class="detail-field-val">${assignedNames}</span></div>` : ''}
-    </div>
-    ${notes ? `<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">${notes}</div></div>` : ''}
-  `;
-  showDetailPanel(html);
-}
-
-// ─── INSPECTION DETAIL ───
-function openInspectionDetail(inspId) {
-  var insp = DB.inspections.find(function(i) { return i.id === inspId; });
-  if (!insp) return;
-  var ref = insp.fields['Inspection Reference'] || 'Unnamed';
-  var date = insp.fields['Visit Date'] || '';
-  var scheduled = insp.fields['Next Visit Date'] || '';
-  var contractor = insp.fields['Contractor on Site'] || '';
-  var defect = insp.fields['Issues / Defects Found'] === true;
-  var stage = fsel(insp.fields, 'Work Stage', '');
-  var visitType = fsel(insp.fields, 'Visit Type', '');
-  var notes = insp.fields['Observations'] || '';
-  var action = insp.fields['Action Required'] || '';
-  var photos = insp.fields['Attachments'] || [];
-  var projLinks = insp.fields['Project'] || [];
-  var projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
-  var proj = projId ? DB.projects.find(function(p) { return p.id === projId; }) : null;
-  var projName = proj ? (proj.fields['Project Name'] || '').split('\u2014')[0].trim() : '';
-
-  var photosHtml = photos.map(function(p) {
-    var thumbUrl = (p.thumbnails && p.thumbnails.large && p.thumbnails.large.url) ? p.thumbnails.large.url : p.url;
-    return '<div style="margin-bottom:10px">' +
-      '<img src="' + thumbUrl + '" ' +
-      'style="width:100%;border-radius:8px;cursor:pointer;display:block;object-fit:cover;aspect-ratio:16/9" ' +
-      'onclick="openImageLightbox(\'' + p.url + '\')" onerror="this.style.display=&quot;none&quot;"/>' +
-      '<div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">Tap to enlarge</div>' +
-    '</div>';
-  }).join('');
-
-  var html = '<div class="detail-close">' +
-    '<div class="detail-title">' + ref + '</div>' +
-    '<button class="detail-close-btn" onclick="closeDetailPanel()">\u2715</button>' +
-  '</div>' +
-  '<span class="' + (defect ? 'defect-yes' : 'defect-no') + '" style="display:inline-block;margin-bottom:12px">' + (defect ? 'Defect Found' : 'No Defects') + '</span>' +
-  (projName ? '<div style="font-size:12px;color:var(--text-2);margin-bottom:12px">' + projName + '</div>' : '') +
-  (photosHtml ? '<div style="margin-bottom:16px">' + photosHtml + '</div>' : '') +
-  '<div class="detail-section">' +
-    '<div class="detail-section-title">Inspection Details</div>' +
-    (date ? '<div class="detail-field"><span class="detail-field-label">Visit Date</span><span class="detail-field-val">' + date + '</span></div>' : '') +
-    (scheduled ? '<div class="detail-field"><span class="detail-field-label">Next Visit</span><span class="detail-field-val">' + scheduled + '</span></div>' : '') +
-    (contractor ? '<div class="detail-field"><span class="detail-field-label">Contractor</span><span class="detail-field-val">' + contractor + '</span></div>' : '') +
-    (stage ? '<div class="detail-field"><span class="detail-field-label">Work Stage</span><span class="detail-field-val">' + stage + '</span></div>' : '') +
-    (visitType ? '<div class="detail-field"><span class="detail-field-label">Visit Type</span><span class="detail-field-val">' + visitType + '</span></div>' : '') +
-  '</div>' +
-  (notes ? '<div class="detail-section"><div class="detail-section-title">Site Observations</div><div class="detail-notes">' + notes + '</div></div>' : '') +
-  (action ? '<div class="detail-section"><div class="detail-section-title">Action Required</div><div class="detail-notes" style="border-left:3px solid var(--red);padding-left:12px">' + action + '</div></div>' : '');
-
-  showDetailPanel(html);
-}
-
-function openVendorDetail(vendorId) {
-  var vendor = DB.vendors.find(function(v) { return v.id === vendorId; });
-  if (!vendor) return;
-  var name = vendor.fields['Vendor / Contractor Name'] || 'Unknown';
-  var trade = fsel(vendor.fields, 'Trade / Specialty', '');
-  var contact = vendor.fields['Contact Person'] || '';
-  var phone = vendor.fields['Phone'] || '';
-  var email = vendor.fields['Email'] || '';
-  var location = vendor.fields['Location'] || '';
-  var rating = vendor.fields['Rating'] || 0;
-  var status = fsel(vendor.fields, 'Status', '');
-  var notes = vendor.fields['Notes'] || '';
-  var projLinks = vendor.fields['Projects'] || [];
-  var projNames = projLinks.map(function(l) {
-    return (l.name || '').split('\u2014')[0].trim();
-  }).filter(Boolean);
-  var stars = '\u2605'.repeat(Math.min(rating, 5)) + '\u2606'.repeat(Math.max(0, 5 - rating));
-
-  var html = '<div class="detail-close">' +
-    '<div class="detail-title">' + name + '</div>' +
-    '<button class="detail-close-btn" onclick="closeDetailPanel()">\u2715</button>' +
-  '</div>' +
-  '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">' +
-    '<span style="font-size:18px;color:#E8A000">' + stars + '</span>' +
-    '<span class="pill ' + (status === 'Active' ? 'pill-design' : 'pill-working') + '">' + status + '</span>' +
-    (trade ? '<span style="font-size:12px;color:var(--text-2)">' + trade + '</span>' : '') +
-  '</div>' +
-  '<div class="detail-section">' +
-    '<div class="detail-section-title">Contact</div>' +
-    (contact ? '<div class="detail-field"><span class="detail-field-label">Contact Person</span><span class="detail-field-val">' + contact + '</span></div>' : '') +
-    (phone ? '<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:' + phone + '" style="color:var(--blue)">' + phone + '</a></span></div>' : '') +
-    (email ? '<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:' + email + '" style="color:var(--blue)">' + email + '</a></span></div>' : '') +
-    (location ? '<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">' + location + '</span></div>' : '') +
-  '</div>' +
-  (projNames.length ? '<div class="detail-section"><div class="detail-section-title">Projects (' + projNames.length + ')</div>' + projNames.map(function(n) { return '<div class="detail-list-item">' + n + '</div>'; }).join('') + '</div>' : '') +
-  (notes ? '<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">' + notes + '</div></div>' : '');
-
-  showDetailPanel(html);
-}
-
-function openDeliverableDetail(delivId) {
-  const deliv = DB.deliverables.find(d => d.id === delivId);
-  if (!deliv) return;
-  const title = deliv.fields['Deliverable Title'] || 'Untitled';
-  const type = fsel(deliv.fields,'Deliverable Type','');
-  const status = fsel(deliv.fields,'Status','');
-  const projLinks = deliv.fields['Project'] || [];
-  const projId = projLinks.length ? (typeof projLinks[0] === 'string' ? projLinks[0] : projLinks[0].id) : null;
-  const proj = projId ? DB.projects.find(p => p.id === projId) : null;
-  const projName = proj ? proj.fields['Project Name'] || '' : '';
-  const attachments = deliv.fields['File'] || [];
-  const docLink = deliv.fields['Link to Document'] || '';
-
-  let statusCls = 'pill-working';
-  if (status === 'Approved' || status === 'Issued to Client') statusCls = 'pill-design'; // fixed
-  if (status === 'Revision Required') statusCls = 'pill-construction';
-
-  const filesHtml = attachments.map(att => {
-    const isImage = att.type && att.type.startsWith('image/');
-    const isPdf = att.type === 'application/pdf';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:20px">${isImage ? '🖼' : isPdf ? '📄' : '📎'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${att.filename}</div>
-        <div style="font-size:11px;color:var(--text-3)">${att.type || ''}</div>
-      </div>
-      <a href="${att.url}" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none;padding:4px 10px;border:1px solid var(--blue-light);border-radius:6px;white-space:nowrap">Open ↗</a>
-    </div>`;
-  }).join('');
-
-  const html = `
-    <div class="detail-close">
-      <div class="detail-title">${title}</div>
-      <button class="detail-close-btn" onclick="closeDetailPanel()">✕</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <span class="pill ${statusCls}">${status}</span>
-      ${type ? `<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">${type}</span>` : ''}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Details</div>
-      ${projName ? `<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">${projName.split('—')[0].trim()}</span></div>` : ''}
-    </div>
-    ${(attachments.length || docLink) ? `<div class="detail-section">
-      <div class="detail-section-title">Files & Attachments</div>
-      ${filesHtml}
-    </div>` : '<div class="detail-section"><div class="detail-notes">No files attached to this deliverable.</div></div>'}
-  `;
-  showDetailPanel(html);
-}
-
-// ─── CLIENT DETAIL ───
-function openClientDetail(clientId) {
-  var client=DB.clients.find(function(c){return c.id===clientId;});
-  if(!client) return;
-  var name=client.fields['Client Name']||'Unknown';
-  var type=fsel(client.fields,'Client Type',''), source=fsel(client.fields,'Lead Source','');
-  var email=client.fields['Email']||'', phone=client.fields['Phone']||'';
-  var location=client.fields['Location']||'', state=fsel(client.fields,'State','');
-  var since=client.fields['Client Since']||'', notes=client.fields['Notes']||'';
-  var projLinks=client.fields['Projects']||[];
-  var projNames=projLinks.map(function(l){return (l.name||'').split('—')[0].trim();}).filter(Boolean);
-  var html='<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">✕</button></div>'+
-    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+
-      (type?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:500">'+type+'</span>':'')+
-      (source?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+source+'</span>':'')+
-    '</div>'+
-    '<div class="detail-section"><div class="detail-section-title">Contact Information</div>'+
-      (email?'<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:'+email+'" style="color:var(--blue)">'+email+'</a></span></div>':'')+
-      (phone?'<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:'+phone+'" style="color:var(--blue)">'+phone+'</a></span></div>':'')+
-      (location?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+location+(state?', '+state:'')+'</span></div>':'')+
-      (since?'<div class="detail-field"><span class="detail-field-label">Client Since</span><span class="detail-field-val">'+since+'</span></div>':'')+
-    '</div>'+
-    (projNames.length?'<div class="detail-section"><div class="detail-section-title">Projects ('+projNames.length+')</div>'+projNames.map(function(n){return '<div class="detail-list-item">'+n+'</div>';}).join('')+'</div>':'')+
-    (notes?'<div class="detail-section"><div class="detail-section-title">Client Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
-  showDetailPanel(html);
-}
+init();
+</script>
+</body>
+</html>

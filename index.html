@@ -599,7 +599,11 @@
 
 <div class="loading-screen" id="loadingScreen">
   <div class="loading-logo">EE</div>
-  <div class="loading-text">Loading studio data…</div>
+  <div class="loading-text" id="loadingText">Loading studio data…</div>
+  <div style="width:200px;height:3px;background:rgba(200,32,30,0.15);border-radius:2px;margin-top:8px;overflow:hidden">
+    <div id="loadingBar" style="height:100%;background:var(--red);border-radius:2px;width:0%;transition:width 0.4s ease"></div>
+  </div>
+  <div style="font-size:11px;color:var(--text-3);margin-top:8px" id="loadingHint"></div>
 </div>
 
 <!-- Mobile Header -->
@@ -961,11 +965,14 @@ const TABLES = {
 let DB = {};
 let chartInstances = {};
 
+const CACHE_KEY = 'ee_studia_cache';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 async function fetchTable(tableId) {
   let records = [], offset = null;
   do {
-    let url = `/.netlify/functions/airtable?table=${tableId}`;
-    if (offset) url += `&offset=${encodeURIComponent(offset)}`;
+    let url = '/.netlify/functions/airtable?table=' + tableId;
+    if (offset) url += '&offset=' + encodeURIComponent(offset);
     const res = await fetch(url);
     const data = await res.json();
     records = records.concat(data.records || []);
@@ -975,6 +982,21 @@ async function fetchTable(tableId) {
 }
 
 async function loadAllData() {
+  // Try cache first
+  try {
+    var cached = sessionStorage.getItem(CACHE_KEY);
+    if (cached) {
+      var parsed = JSON.parse(cached);
+      if (parsed && parsed.ts && (Date.now() - parsed.ts) < CACHE_TTL && parsed.data) {
+        DB = parsed.data;
+        console.log('Loaded from cache (' + Math.round((Date.now() - parsed.ts)/1000) + 's old)');
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Fetch fresh data
+  console.log('Fetching fresh data from Airtable...');
   const [projects, clients, payments, deliverables, inspections, vendors, tasks, crew] = await Promise.all([
     fetchTable(TABLES.projects),
     fetchTable(TABLES.clients),
@@ -986,6 +1008,11 @@ async function loadAllData() {
     fetchTable(TABLES.crew)
   ]);
   DB = { projects, clients, payments, deliverables, inspections, vendors, tasks, crew };
+
+  // Save to cache
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: DB }));
+  } catch(e) {}
 }
 
 function f(fields, key, fallback = '') {
@@ -2157,8 +2184,28 @@ function closeDetailPanel() {
 // ─── INIT ───
 async function init() {
   try {
-    await loadAllData();
+    var bar = document.getElementById('loadingBar');
+    var hint = document.getElementById('loadingHint');
+    var txt = document.getElementById('loadingText');
 
+    // Check if we have cache
+    try {
+      var cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        var p = JSON.parse(cached);
+        var age = Math.round((Date.now() - p.ts) / 1000);
+        if (age < 300) {
+          txt.textContent = 'Loading from cache…';
+          hint.textContent = 'Data ' + age + 's old · refreshes every 5 min';
+        }
+      }
+    } catch(e) {}
+
+    if (bar) bar.style.width = '20%';
+    await loadAllData();
+    if (bar) bar.style.width = '100%';
+
+    await new Promise(function(r) { setTimeout(r, 200); });
     document.getElementById('loadingScreen').style.display = 'none';
     document.getElementById('appShell').style.display = 'flex';
 

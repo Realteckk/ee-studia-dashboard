@@ -744,7 +744,7 @@
         <div class="stat-banner-item"><div class="sb-label">Outstanding</div><div class="sb-val sb-red" id="sb-out">—</div><div class="sb-sub">still to collect</div></div>
         <div class="stat-banner-item"><div class="sb-label">Active Projects</div><div class="sb-val" id="sb-proj">—</div><div class="sb-sub">personal commissions</div></div>
       </div>
-      <div class="grid-2">
+      <div>
         <div class="chart-card">
           <div class="chart-title">Projects by stage</div>
           <div class="chart-sub">EE Studia commissions</div>
@@ -918,11 +918,7 @@
           <div class="legend-row" id="iw-stage-legend"></div>
           <div style="position:relative;height:190px"><canvas id="iwStageChart"></canvas></div>
         </div>
-        <div class="chart-card">
-          <div class="chart-title">Contract value by project</div>
-          <div class="chart-sub">₦ millions</div>
-          <div style="position:relative;height:190px"><canvas id="iwValueChart"></canvas></div>
-        </div>
+
       </div>
     </div>
 
@@ -1717,12 +1713,6 @@ function renderIWOverview() {
   }).join('');
   mkChart('iwStageChart','doughnut',sL,[{data:sD,backgroundColor:sC,borderWidth:0}],{cutout:'62%'});
 
-  // Value bar
-  var sorted = iwProj.slice().sort(function(a,b) { return (b.fields['Contract Value (₦)']||0) - (a.fields['Contract Value (₦)']||0); });
-  var vL = sorted.map(function(p) { var n = p.fields['Project Name'] || ''; return n.length > 18 ? n.substring(0,18)+'…' : n; });
-  var vD = sorted.map(function(p) { return +((p.fields['Contract Value (₦)']||0)/1e6).toFixed(1); });
-  mkChart('iwValueChart','bar',vL,[{data:vD,backgroundColor:'#1A5FA8',borderRadius:5,borderSkipped:false}],
-    {scales:{y:{ticks:{callback:function(v){return '₦'+v+'M';},font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}},x:{ticks:{font:{size:10},maxRotation:30},grid:{display:false}}}});
 }
 
 // ─── RENDER IW PROJECTS ───
@@ -1736,13 +1726,12 @@ function renderIWProjects() {
     var loc = p.fields['Location'] || '';
     var type = fsel(p.fields,'Project Type','');
     var status = fsel(p.fields,'Status','');
-    var cv = p.fields['Contract Value (₦)'] || 0;
     var pct = Math.round((p.fields['Completion (%)'] || 0) * 100);
     return '<div class="project-row" style="cursor:pointer" data-pid="' + p.id + '" onclick="openProjectDetail(this.dataset.pid)">' +
       '<span class="project-dot" style="background:' + dotColors[i % dotColors.length] + '"></span>' +
       '<div class="project-info"><div class="project-name">' + name + '</div><div class="project-loc">' + loc + ' · ' + type + '</div></div>' +
       '<span class="pill ' + pillClass(status) + '">' + status + '</span>' +
-      '<div class="project-right"><div class="project-val">' + naira(cv) + '</div><div class="project-pct">' + pct + '%</div></div>' +
+      '<div class="project-right"><div class="project-pct">' + pct + '% done</div></div>' +
       '<div class="prog-bar"><div class="prog-fill" style="width:' + pct + '%;background:#1A5FA8"></div></div>' +
       '<span style="color:var(--text-3);font-size:16px;margin-left:4px">&#8250;</span>' +
     '</div>';
@@ -1756,52 +1745,6 @@ function renderIWProjects() {
     {indexAxis:'y',scales:{x:{max:100,ticks:{callback:function(v){return v+'%';},font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}},y:{ticks:{font:{size:10}},grid:{display:false}}}});
 }
 
-// ─── RENDER IW FINANCIAL ───
-function renderIWFinancial() {
-  var iwProj = DB.projects.filter(isIdlewoods);
-  var iwProjIds = new Set(iwProj.map(function(p) { return p.id; }));
-  var iwPay = DB.payments.filter(function(p) {
-    var linked = f(p.fields,'Project',[]);
-    return linked.some(function(l) {
-      var id = typeof l === 'string' ? l : (l && l.id);
-      return iwProjIds.has(id);
-    });
-  });
-  var totalInv = iwPay.reduce(function(s,p) { return s + (p.fields['Invoice Amount (₦)']||0); }, 0);
-  var totalRecv = iwPay.reduce(function(s,p) { return s + (p.fields['Amount Paid (₦)']||0); }, 0);
-  var overdue = iwPay.filter(function(p) { return (fsel(p.fields,'Status','')||'').toLowerCase().includes('overdue'); });
-  var rate = totalInv > 0 ? Math.round(totalRecv/totalInv*100) : 0;
-
-  document.getElementById('iw-fin-metrics').innerHTML = [
-    { label: 'Total Invoiced', val: naira(totalInv), cls: '' },
-    { label: 'Collected', val: naira(totalRecv), cls: 'metric-green' },
-    { label: 'Overdue', val: naira(overdue.reduce(function(s,p){return s+(p.fields['Invoice Amount (₦)']||0);},0)), cls: 'metric-red' },
-    { label: 'Collection Rate', val: rate + '%', cls: '' }
-  ].map(function(m) {
-    return '<div class="metric-card"><div class="metric-label">' + m.label + '</div><div class="metric-value ' + m.cls + '">' + m.val + '</div></div>';
-  }).join('');
-
-  var projPayMap = {};
-  iwProj.forEach(function(p) { projPayMap[p.id] = { inv:0, recv:0, name: p.fields['Project Name'] || '' }; });
-  iwPay.forEach(function(pay) {
-    var linked = f(pay.fields,'Project',[]);
-    linked.forEach(function(l) {
-      var id = typeof l === 'string' ? l : (l && l.id);
-      if (projPayMap[id]) {
-        projPayMap[id].inv += pay.fields['Invoice Amount (₦)'] || 0;
-        projPayMap[id].recv += pay.fields['Amount Paid (₦)'] || 0;
-      }
-    });
-  });
-  var entries = Object.values(projPayMap).filter(function(e) { return e.inv > 0; }).sort(function(a,b) { return b.inv - a.inv; });
-  var fL = entries.map(function(e) { var n = e.name.split('—')[0].trim(); return n.length > 16 ? n.substring(0,16)+'…' : n; });
-  var invD = entries.map(function(e) { return +(e.inv/1e6).toFixed(1); });
-  var recvD = entries.map(function(e) { return +(e.recv/1e6).toFixed(1); });
-  mkChart('iwFinChart','bar',fL,[
-    {label:'Invoiced',data:invD,backgroundColor:'#C8201E',borderRadius:4,borderSkipped:false},
-    {label:'Received',data:recvD,backgroundColor:'#1D9E75',borderRadius:4,borderSkipped:false}
-  ],{scales:{y:{ticks:{callback:function(v){return '₦'+v+'M';},font:{size:11}},grid:{color:'rgba(0,0,0,0.06)'}},x:{ticks:{font:{size:10},maxRotation:30},grid:{display:false}}}});
-}
 
 // ─── RENDER IW VENDORS ───
 // ─── RENDER IW SITES ───
@@ -1912,7 +1855,6 @@ const renderFns = {
   'ee-vendors': renderEEVendors,
   'iw-overview': renderIWOverview,
   'iw-projects': renderIWProjects,
-  'iw-financial': renderIWFinancial,
   'iw-sites': renderIWSites,
   'iw-vendors': renderIWVendors
 };
@@ -2034,8 +1976,8 @@ function openProjectDetail(projectId) {
       (type?'<div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-val">'+type+'</span></div>':'')+
       (loc?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+loc+(state?', '+state:'')+'</span></div>':'')+
       (clientName?'<div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-val">'+clientName+'</span></div>':'')+
-      '<div class="detail-field"><span class="detail-field-label">Contract Value</span><span class="detail-field-val" style="font-weight:600;font-size:14px">'+naira(cv)+'</span></div>'+
-      '<div class="detail-field"><span class="detail-field-label">Total Received</span><span class="detail-field-val" style="color:var(--green);font-weight:600">'+naira(recv)+'</span></div>'+
+      (cv && !isIdlewoods(proj) ? '<div class="detail-field"><span class="detail-field-label">Contract Value</span><span class="detail-field-val" style="font-weight:600;font-size:14px">'+naira(cv)+'</span></div>' : '') +
+      (recv && !isIdlewoods(proj) ? '<div class="detail-field"><span class="detail-field-label">Total Received</span><span class="detail-field-val" style="color:var(--green);font-weight:600">'+naira(recv)+'</span></div>' : '') +
       '<div class="detail-field"><span class="detail-field-label">Completion</span><span class="detail-field-val">'+pct+'%</span></div>'+
       (start?'<div class="detail-field"><span class="detail-field-label">Start Date</span><span class="detail-field-val">'+start+'</span></div>':'')+
       (end?'<div class="detail-field"><span class="detail-field-label">Expected Completion</span><span class="detail-field-val">'+end+'</span></div>':'')+

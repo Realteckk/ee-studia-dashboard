@@ -1958,6 +1958,321 @@ document.querySelectorAll('.nav-item[data-view]').forEach(function(item) {
 });
 
 
+// ─── IMAGE LIGHTBOX ───
+function openImageLightbox(url) {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:200;display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+  overlay.onclick = function() { overlay.remove(); };
+  var img = document.createElement('img');
+  img.src = url;
+  img.style.cssText = 'max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px';
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+}
+
+// ─── SHARED DETAIL PANEL ───
+function showDetailPanel(html) {
+  closeDetailPanel();
+  var overlay = document.createElement('div');
+  overlay.className = 'detail-overlay';
+  overlay.id = 'detailPanelOverlay';
+  overlay.onclick = function(e) { if (e.target === overlay) closeDetailPanel(); };
+  var panel = document.createElement('div');
+  panel.className = 'detail-panel';
+  panel.innerHTML = html;
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+
+function closeDetailPanel() {
+  var el = document.getElementById('detailPanelOverlay');
+  if (el) el.remove();
+}
+
+// ─── PROJECT DETAIL ───
+function openProjectDetail(projectId) {
+  var proj = DB.projects.find(function(p) { return p.id === projectId; });
+  if (!proj) return;
+  var name = proj.fields['Project Name'] || 'Unnamed';
+  var status = fsel(proj.fields, 'Status', '');
+  var type = fsel(proj.fields, 'Project Type', '');
+  var loc = proj.fields['Location'] || '';
+  var state = fsel(proj.fields, 'State', '') || proj.fields['State'] || '';
+  var cv = proj.fields['Contract Value (₦)'] || 0;
+  var recv = proj.fields['Total Received ( ₦ )'] || 0;
+  var pct = Math.round((proj.fields['Completion (%)'] || 0) * 100);
+  var start = proj.fields['Start Date'] || '';
+  var end = proj.fields['Expected Completion'] || '';
+  var desc = proj.fields['Project Description'] || '';
+  var notes = proj.fields['Notes'] || '';
+  var image = proj.fields['Image'] || [];
+  var clientLinks = proj.fields['Client'] || [];
+  var delivLinks = proj.fields['Design Deliverables'] || [];
+  var taskLinks = proj.fields['Tasks'] || [];
+  var inspLinks = proj.fields['Site Inspections'] || [];
+
+  var clientId = clientLinks.length ? (typeof clientLinks[0]==='string' ? clientLinks[0] : clientLinks[0].id) : null;
+  var client = clientId ? DB.clients.find(function(c) { return c.id===clientId; }) : null;
+  var clientName = client ? (client.fields['Client Name']||'') : '';
+
+  var delivIds = new Set(delivLinks.map(function(l){return typeof l==='string'?l:(l&&l.id);}));
+  var delivs = DB.deliverables.filter(function(d){return delivIds.has(d.id);});
+  var taskIds = new Set(taskLinks.map(function(l){return typeof l==='string'?l:(l&&l.id);}));
+  var tasks = DB.tasks.filter(function(t){return taskIds.has(t.id);});
+  var inspIds = new Set(inspLinks.map(function(l){return typeof l==='string'?l:(l&&l.id);}));
+  var insps = DB.inspections.filter(function(i){return inspIds.has(i.id);});
+
+  var imgHtml = '';
+  if (image.length) {
+    imgHtml = '<img src="'+image[0].url+'" class="detail-img" onerror="this.style.display=&quot;none&quot;"/>';
+  }
+
+  var html = '<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    imgHtml+
+    '<span class="pill '+pillClass(status)+'" style="display:inline-block;margin-bottom:12px">'+status+'</span>'+
+    '<div class="detail-section"><div class="detail-section-title">Project Details</div>'+
+      (type?'<div class="detail-field"><span class="detail-field-label">Type</span><span class="detail-field-val">'+type+'</span></div>':'')+
+      (loc?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+loc+(state?', '+state:'')+'</span></div>':'')+
+      (clientName?'<div class="detail-field"><span class="detail-field-label">Client</span><span class="detail-field-val">'+clientName+'</span></div>':'')+
+      '<div class="detail-field"><span class="detail-field-label">Contract Value</span><span class="detail-field-val" style="font-weight:600;font-size:14px">'+naira(cv)+'</span></div>'+
+      '<div class="detail-field"><span class="detail-field-label">Total Received</span><span class="detail-field-val" style="color:var(--green);font-weight:600">'+naira(recv)+'</span></div>'+
+      '<div class="detail-field"><span class="detail-field-label">Completion</span><span class="detail-field-val">'+pct+'%</span></div>'+
+      (start?'<div class="detail-field"><span class="detail-field-label">Start Date</span><span class="detail-field-val">'+start+'</span></div>':'')+
+      (end?'<div class="detail-field"><span class="detail-field-label">Expected Completion</span><span class="detail-field-val">'+end+'</span></div>':'')+
+    '</div>'+
+    (desc?'<div class="detail-section"><div class="detail-section-title">Description</div><div class="detail-desc">'+desc+'</div></div>':'')+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">'+notes+'</div></div>':'')+
+    (delivs.length?'<div class="detail-section"><div class="detail-section-title">Deliverables ('+delivs.length+')</div>'+delivs.map(function(d){return '<div class="detail-list-item" style="display:flex;justify-content:space-between"><span>'+(d.fields['Deliverable Title']||'')+'</span><span class="pill '+(fsel(d.fields,'Status','')==='Approved'?'pill-design':'pill-working')+'" style="font-size:9px">'+fsel(d.fields,'Status','')+'</span></div>';}).join('')+'</div>':'')+
+    (tasks.length?'<div class="detail-section"><div class="detail-section-title">Tasks ('+tasks.length+')</div>'+tasks.map(function(t){return '<div class="detail-list-item" style="display:flex;justify-content:space-between"><span>'+(t.fields['Task Name']||'')+'</span><span style="font-size:11px;color:var(--text-3)">'+fsel(t.fields,'Status','')+'</span></div>';}).join('')+'</div>':'')+
+    (insps.length?'<div class="detail-section"><div class="detail-section-title">Inspections ('+insps.length+')</div>'+insps.map(function(i){var d=i.fields['Issues / Defects Found']===true;return '<div class="detail-list-item" style="display:flex;justify-content:space-between"><span>'+(i.fields['Inspection Reference']||'')+'</span><span class="'+(d?'defect-yes':'defect-no')+'">'+(d?'Defect':'Clear')+'</span></div>';}).join('')+'</div>':'');
+
+  showDetailPanel(html);
+}
+
+// ─── TASK DETAIL ───
+function openTaskDetail(taskId) {
+  var task = DB.tasks.find(function(t) { return t.id===taskId; });
+  if (!task) return;
+  var name = task.fields['Task Name'] || 'Unnamed';
+  var pri = fsel(task.fields,'Priority','');
+  var status = fsel(task.fields,'Status','');
+  var cat = fsel(task.fields,'Category','');
+  var due = task.fields['Due Date'] || '';
+  var notes = task.fields['Notes'] || task.fields['Description'] || '';
+  var projLinks = task.fields['Project'] || [];
+  var projId = projLinks.length ? (typeof projLinks[0]==='string'?projLinks[0]:projLinks[0].id) : null;
+  var proj = projId ? DB.projects.find(function(p){return p.id===projId;}) : null;
+  var projName = proj ? (proj.fields['Project Name']||'').split('—')[0].trim() : '';
+  var assignedTo = task.fields['Assigned To'] || [];
+  var assignedNames = assignedTo.map(function(a){return a.name||'';}).filter(Boolean).join(', ');
+  var dotMap = {'Urgent':'#C8201E','High':'#B8610A','Medium':'#1A5FA8','Low':'#888780'};
+
+  var html = '<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+
+      (pri?'<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:'+(dotMap[pri]||'#888')+'20;color:'+(dotMap[pri]||'#888')+';font-weight:500">'+pri+'</span>':'')+
+      (status?'<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+status+'</span>':'')+
+      (cat?'<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+cat+'</span>':'')+
+    '</div>'+
+    '<div class="detail-section"><div class="detail-section-title">Details</div>'+
+      (projName?'<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">'+projName+'</span></div>':'')+
+      (due?'<div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-val">'+due+'</span></div>':'')+
+      (assignedNames?'<div class="detail-field"><span class="detail-field-label">Assigned To</span><span class="detail-field-val">'+assignedNames+'</span></div>':'')+
+    '</div>'+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
+
+  showDetailPanel(html);
+}
+
+// ─── INSPECTION DETAIL ───
+function openInspectionDetail(inspId) {
+  var insp = DB.inspections.find(function(i){return i.id===inspId;});
+  if (!insp) return;
+  var ref = insp.fields['Inspection Reference'] || 'Unnamed';
+  var date = insp.fields['Visit Date'] || '';
+  var contractor = insp.fields['Contractor on Site'] || '';
+  var defect = insp.fields['Issues / Defects Found'] === true;
+  var stage = fsel(insp.fields,'Work Stage','');
+  var visitType = fsel(insp.fields,'Visit Type','');
+  var notes = insp.fields['Observations'] || '';
+  var action = insp.fields['Action Required'] || '';
+  var photos = insp.fields['Attachments'] || [];
+  var projLinks = insp.fields['Project'] || [];
+  var projId = projLinks.length ? (typeof projLinks[0]==='string'?projLinks[0]:projLinks[0].id) : null;
+  var proj = projId ? DB.projects.find(function(p){return p.id===projId;}) : null;
+  var projName = proj ? (proj.fields['Project Name']||'').split('—')[0].trim() : '';
+
+  var photosHtml = photos.map(function(p) {
+    var thumb = (p.thumbnails&&p.thumbnails.large) ? p.thumbnails.large.url : p.url;
+    return '<div style="margin-bottom:10px"><img src="'+thumb+'" data-fullurl="'+p.url+'" style="width:100%;border-radius:8px;cursor:pointer;display:block;object-fit:cover;aspect-ratio:16/9" onclick="openImageLightbox(this.dataset.fullurl)" onerror="this.style.display=&quot;none&quot;"/><div style="font-size:10px;color:var(--text-3);margin-top:4px;text-align:right">Tap to enlarge</div></div>';
+  }).join('');
+
+  var html = '<div class="detail-close"><div class="detail-title">'+ref+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<span class="'+(defect?'defect-yes':'defect-no')+'" style="display:inline-block;margin-bottom:12px">'+(defect?'Defect Found':'No Defects')+'</span>'+
+    (projName?'<div style="font-size:12px;color:var(--text-2);margin-bottom:12px">'+projName+'</div>':'')+
+    (photosHtml?'<div style="margin-bottom:16px">'+photosHtml+'</div>':'')+
+    '<div class="detail-section"><div class="detail-section-title">Inspection Details</div>'+
+      (date?'<div class="detail-field"><span class="detail-field-label">Visit Date</span><span class="detail-field-val">'+date+'</span></div>':'')+
+      (contractor?'<div class="detail-field"><span class="detail-field-label">Contractor</span><span class="detail-field-val">'+contractor+'</span></div>':'')+
+      (stage?'<div class="detail-field"><span class="detail-field-label">Work Stage</span><span class="detail-field-val">'+stage+'</span></div>':'')+
+      (visitType?'<div class="detail-field"><span class="detail-field-label">Visit Type</span><span class="detail-field-val">'+visitType+'</span></div>':'')+
+    '</div>'+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Site Observations</div><div class="detail-notes">'+notes+'</div></div>':'')+
+    (action?'<div class="detail-section"><div class="detail-section-title">Action Required</div><div class="detail-notes" style="border-left:3px solid var(--red);padding-left:12px">'+action+'</div></div>':'');
+
+  showDetailPanel(html);
+}
+
+// ─── VENDOR DETAIL ───
+function openVendorDetail(vendorId) {
+  var vendor = DB.vendors.find(function(v){return v.id===vendorId;});
+  if (!vendor) return;
+  var name = vendor.fields['Vendor / Contractor Name'] || 'Unknown';
+  var trade = fsel(vendor.fields,'Trade / Specialty','');
+  var contact = vendor.fields['Contact Person'] || '';
+  var phone = vendor.fields['Phone'] || '';
+  var email = vendor.fields['Email'] || '';
+  var location = vendor.fields['Location'] || '';
+  var rating = vendor.fields['Rating'] || 0;
+  var status = fsel(vendor.fields,'Status','');
+  var notes = vendor.fields['Notes'] || '';
+  var projLinks = vendor.fields['Projects'] || [];
+  var projNames = projLinks.map(function(l){return (l.name||'').split('—')[0].trim();}).filter(Boolean);
+  var stars = '★'.repeat(Math.min(rating,5))+'☆'.repeat(Math.max(0,5-rating));
+
+  var html = '<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">'+
+      '<span style="font-size:18px;color:#E8A000">'+stars+'</span>'+
+      '<span class="pill '+(status==='Active'?'pill-design':'pill-working')+'">'+status+'</span>'+
+      (trade?'<span style="font-size:12px;color:var(--text-2)">'+trade+'</span>':'')+
+    '</div>'+
+    '<div class="detail-section"><div class="detail-section-title">Contact</div>'+
+      (contact?'<div class="detail-field"><span class="detail-field-label">Contact Person</span><span class="detail-field-val">'+contact+'</span></div>':'')+
+      (phone?'<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:'+phone+'" style="color:var(--blue)">'+phone+'</a></span></div>':'')+
+      (email?'<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:'+email+'" style="color:var(--blue)">'+email+'</a></span></div>':'')+
+      (location?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+location+'</span></div>':'')+
+    '</div>'+
+    (projNames.length?'<div class="detail-section"><div class="detail-section-title">Projects ('+projNames.length+')</div>'+projNames.map(function(n){return '<div class="detail-list-item">'+n+'</div>';}).join('')+'</div>':'')+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
+
+  showDetailPanel(html);
+}
+
+// ─── CLIENT DETAIL ───
+function openClientDetail(clientId) {
+  var client = DB.clients.find(function(c){return c.id===clientId;});
+  if (!client) return;
+  var name = client.fields['Client Name'] || 'Unknown';
+  var type = fsel(client.fields,'Client Type','');
+  var source = fsel(client.fields,'Lead Source','');
+  var email = client.fields['Email'] || '';
+  var phone = client.fields['Phone'] || '';
+  var location = client.fields['Location'] || '';
+  var state = fsel(client.fields,'State','') || client.fields['State'] || '';
+  var since = client.fields['Client Since'] || '';
+  var notes = client.fields['Notes'] || '';
+  var projLinks = client.fields['Projects'] || [];
+  var projNames = projLinks.map(function(l){return (l.name||'').split('—')[0].trim();}).filter(Boolean);
+
+  var html = '<div class="detail-close"><div class="detail-title">'+name+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+
+      (type?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--amber-light);color:var(--amber);font-weight:500">'+type+'</span>':'')+
+      (source?'<span style="font-size:11px;padding:4px 12px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+source+'</span>':'')+
+    '</div>'+
+    '<div class="detail-section"><div class="detail-section-title">Contact Information</div>'+
+      (email?'<div class="detail-field"><span class="detail-field-label">Email</span><span class="detail-field-val"><a href="mailto:'+email+'" style="color:var(--blue)">'+email+'</a></span></div>':'')+
+      (phone?'<div class="detail-field"><span class="detail-field-label">Phone</span><span class="detail-field-val"><a href="tel:'+phone+'" style="color:var(--blue)">'+phone+'</a></span></div>':'')+
+      (location?'<div class="detail-field"><span class="detail-field-label">Location</span><span class="detail-field-val">'+location+(state?', '+state:'')+'</span></div>':'')+
+      (since?'<div class="detail-field"><span class="detail-field-label">Client Since</span><span class="detail-field-val">'+since+'</span></div>':'')+
+    '</div>'+
+    (projNames.length?'<div class="detail-section"><div class="detail-section-title">Projects ('+projNames.length+')</div>'+projNames.map(function(n){return '<div class="detail-list-item">'+n+'</div>';}).join('')+'</div>':'')+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Client Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
+
+  showDetailPanel(html);
+}
+
+// ─── DELIVERABLE DETAIL ───
+function openDeliverableDetail(delivId) {
+  var deliv = DB.deliverables.find(function(d){return d.id===delivId;});
+  if (!deliv) return;
+  var title = deliv.fields['Deliverable Title'] || 'Untitled';
+  var type = fsel(deliv.fields,'Deliverable Type','');
+  var status = fsel(deliv.fields,'Status','');
+  var projLinks = deliv.fields['Project'] || [];
+  var projId = projLinks.length ? (typeof projLinks[0]==='string'?projLinks[0]:projLinks[0].id) : null;
+  var proj = projId ? DB.projects.find(function(p){return p.id===projId;}) : null;
+  var projName = proj ? (proj.fields['Project Name']||'').split('—')[0].trim() : '';
+  var attachments = deliv.fields['File'] || [];
+  var docLink = deliv.fields['Link to Document'] || '';
+
+  var filesHtml = attachments.map(function(att) {
+    var isImage = att.type && att.type.startsWith('image/');
+    var isPdf = att.type === 'application/pdf';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'+
+      '<span style="font-size:20px">'+(isImage?'🖼':isPdf?'📄':'📎')+'</span>'+
+      '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+att.filename+'</div></div>'+
+      '<a href="'+att.url+'" target="_blank" style="font-size:11px;color:var(--blue);text-decoration:none;padding:4px 10px;border:1px solid var(--blue-light);border-radius:6px;white-space:nowrap">Open ↗</a>'+
+    '</div>';
+  }).join('');
+
+  var statusCls = 'pill-working';
+  if (status==='Approved'||status==='Issued to Client') statusCls='pill-design';
+  if (status==='Revision Required') statusCls='pill-construction';
+
+  var html = '<div class="detail-close"><div class="detail-title">'+title+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'+
+      '<span class="pill '+statusCls+'">'+status+'</span>'+
+      (type?'<span style="font-size:11px;padding:3px 10px;border-radius:20px;background:var(--surface-2);color:var(--text-2)">'+type+'</span>':'')+
+    '</div>'+
+    (projName?'<div class="detail-section"><div class="detail-section-title">Details</div><div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">'+projName+'</span></div></div>':'')+
+    ((attachments.length||docLink)?'<div class="detail-section"><div class="detail-section-title">Files & Attachments</div>'+filesHtml+(docLink?'<div style="padding:10px 0"><a href="'+docLink+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);text-decoration:none;padding:8px 14px;border:1px solid var(--blue-light);border-radius:8px">&#128279; Open Document &#8599;</a></div>':'')+'</div>':'<div class="detail-section"><div class="detail-notes">No files attached.</div></div>');
+
+  showDetailPanel(html);
+}
+
+// ─── PAYMENT DETAIL ───
+function openPaymentDetail(payId) {
+  var pay = DB.payments.find(function(p){return p.id===payId;});
+  if (!pay) return;
+  var ref = pay.fields['Payment Reference'] || '';
+  var inv = pay.fields['Invoice Amount (₦)'] || 0;
+  var paid = pay.fields['Amount Paid (₦)'] || 0;
+  var outstanding = inv - paid;
+  var status = fsel(pay.fields,'Status','');
+  var method = fsel(pay.fields,'Payment Method','');
+  var invDate = pay.fields['Invoice Date'] || '';
+  var dueDate = pay.fields['Due Date'] || '';
+  var dateRecv = pay.fields['Date Received'] || '';
+  var notes = pay.fields['Notes'] || '';
+  var projLinks = pay.fields['Project'] || [];
+  var projId = projLinks.length ? (typeof projLinks[0]==='string'?projLinks[0]:projLinks[0].id) : null;
+  var proj = projId ? DB.projects.find(function(p){return p.id===projId;}) : null;
+  var projName = proj ? (proj.fields['Project Name']||'').split('—')[0].trim() : '';
+
+  var sl = (status||'').toLowerCase();
+  var statusCls = 'pay-pending';
+  if (sl.includes('overdue')) statusCls='pay-overdue';
+  else if (sl.includes('partial')) statusCls='pay-partial';
+  else if (sl.includes('complete')||sl==='paid') statusCls='pay-paid';
+
+  var html = '<div class="detail-close"><div class="detail-title">'+(ref||'Payment Record')+'</div><button class="detail-close-btn" onclick="closeDetailPanel()">&#10005;</button></div>'+
+    '<span class="pay-pill '+statusCls+'" style="display:inline-block;margin-bottom:16px;font-size:11px;padding:4px 12px">'+status+'</span>'+
+    '<div class="detail-section"><div class="detail-section-title">Payment Details</div>'+
+      (projName?'<div class="detail-field"><span class="detail-field-label">Project</span><span class="detail-field-val">'+projName+'</span></div>':'')+
+      '<div class="detail-field"><span class="detail-field-label">Invoice Amount</span><span class="detail-field-val" style="font-size:16px;font-family:Syne,sans-serif;font-weight:600">'+naira(inv)+'</span></div>'+
+      '<div class="detail-field"><span class="detail-field-label">Amount Paid</span><span class="detail-field-val" style="color:var(--green);font-weight:600">'+naira(paid)+'</span></div>'+
+      '<div class="detail-field"><span class="detail-field-label">Outstanding</span><span class="detail-field-val" style="color:'+(outstanding>0?'var(--red)':'var(--green)')+';font-weight:600">'+naira(outstanding)+'</span></div>'+
+      (method?'<div class="detail-field"><span class="detail-field-label">Method</span><span class="detail-field-val">'+method+'</span></div>':'')+
+      (invDate?'<div class="detail-field"><span class="detail-field-label">Invoice Date</span><span class="detail-field-val">'+invDate+'</span></div>':'')+
+      (dueDate?'<div class="detail-field"><span class="detail-field-label">Due Date</span><span class="detail-field-val">'+dueDate+'</span></div>':'')+
+      (dateRecv?'<div class="detail-field"><span class="detail-field-label">Date Received</span><span class="detail-field-val">'+dateRecv+'</span></div>':'')+
+    '</div>'+
+    (notes?'<div class="detail-section"><div class="detail-section-title">Notes</div><div class="detail-notes">'+notes+'</div></div>':'');
+
+  showDetailPanel(html);
+}
+
+
+
 // ─── INIT ───
 async function init() {
   try {
@@ -2027,23 +2342,4 @@ async function init() {
 init();
 </script>
 </body>
-</html>// ─── SHARED DETAIL PANEL ───
-function showDetailPanel(html) {
-  closeDetailPanel();
-  var overlay = document.createElement('div');
-  overlay.className = 'detail-overlay';
-  overlay.id = 'detailPanelOverlay';
-  overlay.onclick = function(e) { if (e.target === overlay) closeDetailPanel(); };
-  var panel = document.createElement('div');
-  panel.className = 'detail-panel';
-  panel.innerHTML = html;
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-}
-
-function closeDetailPanel() {
-  var existing = document.getElementById('detailPanelOverlay');
-  if (existing) existing.remove();
-  var proj = document.getElementById('projectDetailOverlay');
-  if (proj) proj.remove();
-}
+</html>

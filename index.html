@@ -2027,4 +2027,23 @@ async function init() {
 init();
 </script>
 </body>
-</html>
+</html>// ─── SHARED DETAIL PANEL ───
+function showDetailPanel(html) {
+  closeDetailPanel();
+  var overlay = document.createElement('div');
+  overlay.className = 'detail-overlay';
+  overlay.id = 'detailPanelOverlay';
+  overlay.onclick = function(e) { if (e.target === overlay) closeDetailPanel(); };
+  var panel = document.createElement('div');
+  panel.className = 'detail-panel';
+  panel.innerHTML = html;
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+
+function closeDetailPanel() {
+  var existing = document.getElementById('detailPanelOverlay');
+  if (existing) existing.remove();
+  var proj = document.getElementById('projectDetailOverlay');
+  if (proj) proj.remove();
+}
